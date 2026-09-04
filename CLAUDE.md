@@ -309,8 +309,8 @@ Four tracks, four people. Every track has a named owner from hour one.
 
 - **Payments** — steps 3, 4, 10, 11. Owns `/payments`, `/shops`, `/scripts`.
   Deliverable: `purchase` that settles each approved line or refuses, with every
-  attempt logged as an event. **Pay the shops in parallel** when there is more
-  than one; XRPL settles in ~4s each.
+  attempt logged as an event. Lines settle sequentially from the one session
+  wallet (§7); ~6–9 s each through the facilitator.
 - **Server** — steps 5, 8, 9. Owns `/mcp-server`, `/tests`. Deliverable: a session
   that runs end to end with fake data, plus the HTTP read endpoints.
 - **Frontend** — steps 1, 6, and `/dashboard`. Owns `/widget`. Deliverable: a view
@@ -463,7 +463,12 @@ line price) and that line is not retried. The line is released on the card, the
 remainder sweeps to treasury, and the receipt says which item did not go through.
 This is our answer to "what happens when a service fails".
 
-**Parallelize.** When an order spans two shops, pay them concurrently.
+**Sequential, not parallel.** All lines are paid from one session wallet, and
+one XRPL account has one sequence stream; concurrent autofill from the same
+account collides on the sequence number. So lines settle one after another,
+about 6–9 s each through the facilitator. The demo has one line per run, so
+this costs nothing on stage. If a multi-line demo is ever needed, the fix is
+XRPL tickets, not parallel submits.
 
 ---
 

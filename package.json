@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "tsc -b packages/shared packages/mcp-server packages/shops scripts && tsc -p packages/widget",
+    "typecheck": "tsc -b packages/shared packages/payments packages/mcp-server packages/shops scripts && tsc -p packages/widget",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:widget": "npm run dev -w @buffet/widget",
@@ -21,7 +21,8 @@
     "fund:treasury": "tsx scripts/fund-treasury.ts",
     "provision": "tsx scripts/provision.ts",
     "dev:shops": "npm run dev -w @buffet/shops",
-    "x402:buy": "tsx scripts/x402-buy.ts"
+    "x402:buy": "tsx scripts/x402-buy.ts",
+    "settle:demo": "tsx scripts/settle-demo.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

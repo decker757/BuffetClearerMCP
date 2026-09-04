@@ -7,6 +7,7 @@
     "spike:xrpl": "tsx xrpl-spike.ts"
   },
   "dependencies": {
+    "@buffet/payments": "*",
     "@buffet/shared": "*",
     "dotenv": "^16.5.0",
     "x402-xrpl": "^0.3.2",
