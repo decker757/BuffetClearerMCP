@@ -836,19 +836,28 @@ Acceptance: real 402 on purchase; settlement on XRPL testnet; purchase idempoten
 per `quote_id` + `line_id`; browse without a range is a 400; a product title
 containing `<script>` renders as text in the widget.
 
-### 15.3 Services — adopted as a diagram, collapsed for the build
+### 15.3 Merchant-side services — a mock, not the product
 
-The message names five: inventory (with DB), x402 payments, email, gateway,
-broker (settlement → confirmation email). Draw all five on the architecture
-slide. Build them as **modules in one process** with an in-process event bus;
-the broker is the existing event log (§12): `invoice.sent` is emitted by the
-email module reacting to `purchase.settled`. Split into containers only if a
-track finishes early. Catalog store: SQLite or a JSON seed for the demo;
-Postgres on Docker is fine if someone wants it, RDS is not worth the hour.
+**Where the line is.** The product is the MCP server, the widget, and the two
+connections: card on one side, XRPL over x402 on the other. Everything the
+message lists under "backend" (inventory with a DB, x402 payments, email,
+gateway, broker for settlement → confirmation email) is the **merchant side**.
+It exists because real shops that accept x402 do not exist yet, so we build two
+to demo against. In production it is someone else's backend with one header
+added. Say that on stage and draw it that way: one box labelled "merchant
+(mocked for demo)", not five services on our side of the diagram.
 
-**"Visibility for everything, as a graph"** is the §12 event feed. Every
-endpoint call is already a span with `parent_span_id`, so the waterfall view is
-a filter over data we have. No second tracing system.
+**Build it as one process** under `/shops`, with the five as modules and an
+in-process event bus; the broker is a handler that sends the invoice email when
+an order settles. Split into containers only if a track finishes early. Catalog
+store: SQLite or a JSON seed; Postgres on Docker is fine if someone wants it,
+RDS is not worth the hour.
+
+**"Visibility for everything, as a graph"** is the §12 event feed on *our* side.
+Every tool call and every request the server makes to a shop is already a span
+with `parent_span_id`, so the waterfall view is a filter over data we have. The
+mock merchant needs no tracing of its own; a judge is watching the control plane,
+not the shop.
 
 ### 15.4 Payment model — closed
 
