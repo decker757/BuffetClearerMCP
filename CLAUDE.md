@@ -9,6 +9,13 @@ Project guide for humans and coding agents. Read this before writing code.
 > **Do in the first 15 minutes:** install the builder feedback hook (§14). It is
 > 10% of the score, it is project-scoped, and every one of us does it.
 
+> **The rubric lives in `ripple/`** (git submodule of
+> github.com/Singhacks-2026/ripple). `README.md` there is the judging source of
+> truth: criteria, features checklist, submission format, governance questions.
+> `resources.md` is the tooling list. Check every product or pitch decision
+> against that README before §14 here. Run `git submodule update --init` after
+> cloning.
+
 > **4 Sep team decisions are in §15 and are authoritative.** The flow is: free
 > browse → 5 recommendations → user selects in the widget → billing in the widget
 > → card charged for the exact total → session wallet funded to that total → x402
@@ -282,7 +289,7 @@ go first.
 
 | # | Task | Why it's here | Cuttable |
 |---|---|---|---|
-| 0 | Feedback hook installed by all four, project-scoped. `/xrpl-agentic-resources` loaded in every coding agent | 10% of the score, 15 minutes | No |
+| 0 | Feedback hook installed by all four, project-scoped (`.claude/settings.json` points at `ripple/hook/agents/claude-code/stop-hook.mjs`; each person runs `TEAM_NAME=… HACKER_NAME=… node ripple/hook/setup.mjs --non-interactive` once). `/xrpl-agentic-resources` loaded; run its `refresh.sh` once to vendor the t54 and XRPL repos. Install the XRPL Payments and Agent Wallet skills (§6) | 10% of the score, 15 minutes | No |
 | 1 | Hello-world MCP App that renders a box. **Timebox: 2 hours.** If it fails, `/dashboard` is the demo surface and the widget becomes a stretch goal | If Claude shows the text fallback instead of the iframe, we need to know in hour one, not hour twenty | No |
 | 2 | Name confirmed, vertical confirmed | Blocks the demo script and every README | No |
 | 3 | Shop A: seeded catalog, free `browse` that 400s without a price range, x402-gated `purchase` with a real 402 and real RLUSD settlement | Proves the payment leg end to end | No |
@@ -343,6 +350,36 @@ Read these before touching `/payments` or `/scripts`.
 - **Mainnet onboarding cost is a Feasibility question.** Put the per-wallet
   reserve number on the slide, from live values, not from memory.
 
+### XRPL AI Starter Kit — use it and say so
+
+The README in `ripple/` recommends it and asks for an explanation of the
+integration in the submission. It is four things, and we use three:
+
+- **XRPL Payments skill** and **XRPL Agent Wallet skill** (from
+  `XRPLF/xrpl-dev-portal`). Install into this repo with
+  `npx skills add <url> --agent claude-code` (URLs in the getting-started page
+  listed in `resources/xrpl-llms.txt`). They are coding-time context for
+  trustlines, RLUSD payments and error handling, not runtime dependencies.
+- **x402 via t54** — the `x402-xrpl` SDK and hosted facilitator (§7). This is
+  the runtime piece.
+- **XRPL Docs MCP server** — optional, for the coding agents, not the product.
+
+Write one paragraph in the README on which parts we used and how.
+
+### Verified values (2026-09-05, from the Starter Kit docs)
+
+- RLUSD testnet issuer: `rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV`. Currency code as
+  40-hex: `524C555344000000000000000000000000000000`. Faucet: tryrlusd.com.
+- Testnet WebSocket: `wss://s.altnet.rippletest.net:51233`.
+- Reserves from `ripple/skills/xrpl-agentic-resources/resources/xrpl-fee-settings.json`:
+  base 1 XRP, owner 0.2 XRP per object, base fee 10 drops. Re-run `refresh.sh`
+  before putting them on a slide.
+- Agent transaction conventions (xrpl.org "Track and Measure Agent Behavior"):
+  a `SourceTag` on every agent payment and a hex JSON memo with
+  `agent_id`, `session_id`, `action`, `task_id`. `x402-xrpl` stamps SourceTag
+  `804681468` by default; keep it so the payments show up in XRPL's own agent
+  analytics, and put our session id in the memo. That is free Technical Depth.
+
 ### OpenWallet (Open Wallet Standard)
 
 A local, policy-gated signing library with XRPL support. Keys stay encrypted at
@@ -378,15 +415,31 @@ The session wallet is our answer to both.
   returns 402 with an `accepts` array carrying scheme, network, amount, asset,
   `payTo`, and timeout. We pay, retry with the payment header, and get the order
   confirmation.
-- **Pin a protocol version early.** v2 uses `PAYMENT-REQUIRED` /
-  `PAYMENT-SIGNATURE` / `PAYMENT-RESPONSE` headers. v1 used `X-PAYMENT` /
-  `X-PAYMENT-RESPONSE`. Both shapes appear in docs and SDKs. Use whichever the t54
-  facilitator speaks and write it down in §11.
+- **Protocol pinned (§11): x402 v2 via `x402-xrpl` 0.3.2** (npm, TypeScript,
+  depends on `xrpl` ^4.5). Headers `PAYMENT-REQUIRED` / `PAYMENT-SIGNATURE` /
+  `PAYMENT-RESPONSE`, scheme `exact`, network `xrpl:1` for testnet. Hosted
+  facilitator: `https://xrpl-facilitator-testnet.t54.ai` (verify and settle).
+  Shop side: `requirePayment` from `x402-xrpl/express` with `asset` set to the
+  RLUSD 40-hex code, `issuer`, and `price` as a decimal string. Our side:
+  `x402Purchase` / `x402Fetch` from `x402-xrpl`, which returns the settlement
+  tx hash from `PAYMENT-RESPONSE`.
+- **Replay protection is the invoice.** The 402 carries `extra.invoiceId`; the
+  signed Payment commits to it via a Memo or the `InvoiceID` field, and the
+  facilitator consumes it once. We key our own idempotency on `quote_id` +
+  `line_id` and pass that as the shop's `invoiceId`, so both layers agree.
 - **The `description` field in a 402 is attacker-controlled.** It reaches us at
   the exact moment we are making a spending decision. Invariant 4 applies.
 - **Check quoted against demanded** before signing. The 402 amount must equal the
   line price in the approved quote, and `payTo` must equal the shop's registered
-  address. Anything else is refused and logged as `payment.refused`.
+  address. Implement it as a custom `paymentRequirementsSelector` passed to
+  `x402Fetch` that throws unless amount, asset, issuer and `payTo` all match;
+  also pass `maxValue` as belt and braces. Anything else is refused and logged
+  as `payment.refused`.
+- **Manifest memo.** `x402-xrpl` writes the invoice memo itself. Decide in the
+  phase 1 spike whether `preparePayment` lets us add a second memo; if not, the
+  MCP server passes the manifest hash in the order body and the shop folds it
+  into `invoiceId` (`<quote_id>:<line_id>:<manifest_hash>`), which the SDK then
+  binds into the Memo. Either way the hash is on-ledger in the purchase tx.
 
 ### Policy, all enforced below the model
 
@@ -554,7 +607,8 @@ For "what about paid data" (roadmap, only if asked):
 |---|---|---|---|
 | Product name | open | | before first commit |
 | Demo vertical | proposed: laptop, contrast USB-C cable — confirm | | before first commit |
-| x402 protocol version | whatever the t54 facilitator speaks; check, then record here | | before `/payments` starts |
+| x402 protocol version | **closed, 5 Sep** — v2, `x402-xrpl` 0.3.2, hosted testnet facilitator (§7) | | closed |
+| Manifest memo mechanism | second memo via `preparePayment` if the SDK allows, else folded into `invoiceId` (§7). Decide in the phase 1 spike | | phase 1 |
 | XRP or RLUSD | **RLUSD.** Dollars on the budget bar mean something; reserves are XRP regardless. Flip only if trustline setup blocks step 3 | | closed |
 | Event schema | **closed** — §12 | | closed |
 | Tool surface | **closed** — §3: browse / propose / checkout / purchase. The model does not choose URLs | | closed |
@@ -727,7 +781,10 @@ licence or a licensed partner — and we know which one."*
 - [ ] Tx hashes and explorer links: funding, one purchase per shop, one refusal
       event, the payment carrying the manifest memo, one sweep from a failed-line
       run. The widget's event feed already has them; copy them into the README.
-- [ ] Explanation of the payment flow (§1 loop + §3 two rails).
+- [ ] Explanation of the payment flow (§1 loop + §3 two rails) and of the x402
+      flow specifically (the README in `ripple/` asks for it by name).
+- [ ] One paragraph on the XRPL AI Starter Kit integration: which skills we
+      installed, that x402 runs through `x402-xrpl` and the t54 facilitator (§6).
 - [ ] Backup demo video (step 12).
 
 ### What earns what

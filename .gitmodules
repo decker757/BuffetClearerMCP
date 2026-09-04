@@ -1,0 +1,3 @@
+[submodule "ripple"]
+	path = ripple
+	url = https://github.com/Singhacks-2026/ripple.git
