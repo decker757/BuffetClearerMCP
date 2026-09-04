@@ -77,6 +77,13 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
     if (!input.shops[line.shop_id]) throw new PolicyError("shop_not_registered", `line ${line.line_id} names unknown shop ${line.shop_id}`);
   }
 
+  // 0a. Treasury must be able to fund the item total; a refusal here costs nothing anywhere.
+  const treasuryBalance = await ledger.rlusdBalance(input.treasury.address);
+  if (lt(treasuryBalance, quote.items_total)) {
+    sink.emit({ type: "payment.refused", source: "server", span_id: span, payload: { rule: "treasury_underfunded", treasury: treasuryBalance, needed: quote.items_total } });
+    throw new PolicyError("treasury_underfunded", `treasury holds ${treasuryBalance} RLUSD, the order needs ${quote.items_total}; top it up (npm run fund:treasury) or sweep the shops`);
+  }
+
   // 1a. Wallet first, so a refusal here costs nothing on the card.
   let wallet: { address: string; seed: string };
   try {

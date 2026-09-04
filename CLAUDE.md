@@ -521,6 +521,17 @@ Two runs on the same server, to show it isn't hardcoded to one category. Under
 three minutes total. **One item per run.** Mention the multi-item loop in one
 sentence; do not demo it. Have billing details ready to paste.
 
+**Before going on stage:** `npm run sweep:shops` (the mock shops hand their
+RLUSD back to the treasury), `npm run provision -- repair` (parked pool wallets
+back to idle), then `curl localhost:3001/health` and check the pool counts.
+Every test purchase drains the treasury; the first Claude Desktop approval of
+the night failed on exactly this.
+
+**After rebuilding the widget, restart Claude Desktop.** The host fetches the
+`ui://` resource once per server connection and caches it; a rebuilt bundle is
+not picked up until the server reconnects. The same goes for the server itself.
+Quit from the tray, not just the window.
+
 **Making Claude pick the tool (learned 5 Sep).** With web search on and a bare
 "I want to buy a laptop", Claude Desktop answered from memory and the web and
 never called `start_session`. For the demo: turn **web search off** in the chat,

@@ -22,7 +22,8 @@
     "provision": "tsx scripts/provision.ts",
     "dev:shops": "npm run dev -w @buffet/shops",
     "x402:buy": "tsx scripts/x402-buy.ts",
-    "settle:demo": "tsx scripts/settle-demo.ts"
+    "settle:demo": "tsx scripts/settle-demo.ts",
+    "sweep:shops": "tsx scripts/sweep-shops.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

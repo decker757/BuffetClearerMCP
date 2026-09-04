@@ -186,7 +186,9 @@ function billingForm(s: Snapshot, st: UiState, a: Actions): HTMLElement | undefi
   if (!st.transport.canAct) return undefined;
   if (s.selections.length === 0 || s.billing_present || !["shopping", "checkout"].includes(s.phase)) return undefined;
   const { root, body } = card("Billing", "never sent to the model");
-  const form = el("form", "form");
+  // Not a <form>: the host sandbox does not allow form submission, and a sandboxed submit never
+  // even fires the submit event. A plain button reads the inputs directly; Enter does the same.
+  const form = el("div", "form");
   const field = (id: string, label: string, type = "text", wide = false) => {
     const l = el("label", wide ? "wide" : "");
     l.append(label);
@@ -201,15 +203,29 @@ function billingForm(s: Snapshot, st: UiState, a: Actions): HTMLElement | undefi
   form.append(field("name", "Name"), field("email", "Email", "email"), field("address", "Delivery address", "text", true));
   const actions = el("div", "actions wide");
   const submit = el("button", "primary", "Save billing details");
-  submit.type = "submit";
+  submit.type = "button";
   submit.disabled = st.busy;
   actions.append(submit);
   actions.append(el("span", "note", "Stored on the server for this session only and deleted after the invoice is sent."));
+  const problem = el("div", "err");
+  actions.append(problem);
   form.append(actions);
-  form.addEventListener("submit", (ev) => {
-    ev.preventDefault();
-    const fd = new FormData(form);
-    a.submitBilling({ name: String(fd.get("name") ?? ""), email: String(fd.get("email") ?? ""), address: String(fd.get("address") ?? "") });
+  const save = () => {
+    const get = (id: string) => (form.querySelector<HTMLInputElement>(`input[name="${id}"]`)?.value ?? "").trim();
+    const b = { name: get("name"), email: get("email"), address: get("address") };
+    if (!b.name || !b.address || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.email)) {
+      problem.textContent = "Please fill in a name, a valid email, and a delivery address.";
+      return;
+    }
+    problem.textContent = "";
+    a.submitBilling(b);
+  };
+  submit.addEventListener("click", save);
+  form.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      save();
+    }
   });
   body.append(form);
   return root;

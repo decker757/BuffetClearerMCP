@@ -223,12 +223,12 @@ describe("tool surface", () => {
     await h.call("submit_billing", { session_id: sid, ...BILLING });
     const quote_id = (await h.call("checkout", { session_id: sid, reason: "r" })).data.quote_id as string;
     await h.call("approve_quote", { session_id: sid, quote_id });
-    // Funding succeeds, then the ledger blows up on the next read.
+    // The first read is the treasury precheck; funding succeeds; then the ledger blows up on the next read.
     const realBalance = h.ledger.rlusdBalance.bind(h.ledger);
     let calls = 0;
     h.ledger.rlusdBalance = async (a) => {
       calls += 1;
-      if (calls === 1) throw new Error("ledger websocket dropped");
+      if (calls === 2) throw new Error("ledger websocket dropped");
       return realBalance(a);
     };
     const r = await h.call("purchase", { session_id: sid, quote_id, reason: "r" });

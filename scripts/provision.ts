@@ -3,6 +3,7 @@
  *
  *   npx tsx scripts/provision.ts shops          -> .wallets/shops.json  { shop_a: {seed,address}, shop_b: ... }
  *   npx tsx scripts/provision.ts pool [n=5]     -> .wallets/pool.json   [ {seed,address,state:"idle"}, ... ]
+ *   npx tsx scripts/provision.ts repair         -> attention wallets holding no RLUSD go back to idle
  *
  * Idempotent: existing entries are kept, missing trustlines are set. Seeds are
  * plaintext on disk because this is testnet; the file is gitignored.
@@ -65,6 +66,25 @@ async function provisionPool(c: Client, n: number): Promise<void> {
   console.log(`pool: ${saved.length} wallets ->`, file);
 }
 
+/** Operator action (§15.5): a parked wallet that holds no RLUSD is safe to hand out again. */
+async function repairPool(c: Client): Promise<void> {
+  const file = path.join(ROOT, ".wallets/pool.json");
+  const saved: Entry[] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
+  for (const e of saved) {
+    if (e.state !== "attention") continue;
+    const lines = await c.request({ command: "account_lines", account: e.address, peer: RLUSD_ISSUER });
+    const bal = lines.result.lines.find((l) => l.currency === RLUSD_HEX)?.balance ?? "0";
+    if (Number(bal) > 0) {
+      console.log(`${e.address}: attention, still holds ${bal} RLUSD; sweep it by hand before repairing`);
+      continue;
+    }
+    e.state = "idle";
+    delete (e as { session_id?: string }).session_id;
+    console.log(`${e.address}: attention -> idle`);
+  }
+  fs.writeFileSync(file, JSON.stringify(saved, null, 2));
+}
+
 async function main(): Promise<void> {
   const kind = process.argv[2];
   const c = new Client(WS);
@@ -72,7 +92,8 @@ async function main(): Promise<void> {
   try {
     if (kind === "shops") await provisionShops(c);
     else if (kind === "pool") await provisionPool(c, Number(process.argv[3] ?? "5"));
-    else throw new Error("usage: provision.ts shops | pool [n]");
+    else if (kind === "repair") await repairPool(c);
+    else throw new Error("usage: provision.ts shops | pool [n] | repair");
   } finally {
     await c.disconnect();
   }
