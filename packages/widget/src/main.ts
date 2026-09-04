@@ -32,7 +32,7 @@ async function boot(): Promise<void> {
   const draw = (force = false) => {
     // Skip identical frames: fewer re-renders means less flicker while the user is typing.
     const s = st.snapshot;
-    const key = s ? [s.head_seq, s.phase, s.step, s.selections.length, s.billing_present, st.busy, st.error, st.hint, st.expanded.size, st.session_id].join("|") : `none|${st.session_id}|${st.error}`;
+    const key = s ? [s.head_seq, s.phase, s.step, s.selections.length, s.billing_present, st.busy, st.error, st.hint, st.expanded.size, st.feedOpen, st.spawnedBy, st.session_id].join("|") : `none|${st.session_id}|${st.error}`;
     if (!force && key === lastKey) return;
     lastKey = key;
     try {
@@ -70,7 +70,7 @@ async function boot(): Promise<void> {
     draw();
   };
 
-  const act = async (fn: () => Promise<void>, nudge?: { text: string; fallback: string }): Promise<void> => {
+  const act = async (fn: () => Promise<void>, nudge?: { text: string; fallback: string }, hint?: string): Promise<void> => {
     st.busy = true;
     st.error = undefined;
     st.hint = undefined;
@@ -90,24 +90,26 @@ async function boot(): Promise<void> {
     }
     if (done && nudge) {
       const delivered = await transport.nudge(nudge.text);
-      if (!delivered && transport.canAct) st.hint = nudge.fallback;
+      // Delivered means "placed in the chat box" on Claude Desktop; say so either way.
+      st.hint = delivered && transport.canAct ? `${nudge.fallback.split(".")[0]}. Press Enter in the chat box to continue.` : nudge.fallback;
+    } else if (done && hint) {
+      st.hint = hint;
     }
     st.busy = false;
     draw(true);
   };
 
-  // Nudges name server-generated ids only. Never a product title: that is seller text, and a
-  // nudge is delivered to the model as the user speaking (invariant 4).
+  // Claude Desktop does not send a widget message; it places it in the chat box for the user to
+  // send. So: no message after select (nothing for the agent to do until billing is in), and the
+  // others are short plain statements. Never a product title: seller text must not enter the
+  // user's channel (invariant 4).
   const actions: Actions = {
     select: (product_id) =>
-      act(() => transport.select(st.session_id!, product_id), {
-        text: `I selected product ${product_id} in the widget. Is there anything else I should add, or shall we proceed?`,
-        fallback: "Selected. Tell Claude in the chat that you have chosen, or that you want to add another item.",
-      }),
+      act(() => transport.select(st.session_id!, product_id), undefined, "Selected. Add another, or enter billing details below."),
     submitBilling: (b) =>
       act(() => transport.submitBilling(st.session_id!, b), {
-        text: "I entered my billing details in the widget. Please proceed to checkout.",
-        fallback: "Billing saved. Tell Claude in the chat to proceed to checkout.",
+        text: "Billing entered in the widget. Please proceed to checkout.",
+        fallback: "Billing saved. Send the message in the chat box, or tell Claude to proceed to checkout.",
       }),
     approve: (quote_id) =>
       act(
@@ -115,27 +117,40 @@ async function boot(): Promise<void> {
           await transport.approve(st.session_id!, quote_id);
           st.approvedQuote = quote_id;
         },
-        { text: `I approved quote ${quote_id} in the widget. Please complete the purchase.`, fallback: "Approved. Tell Claude in the chat to complete the purchase." },
+        { text: "Approved in the widget. Please complete the purchase.", fallback: "Approved. Send the message in the chat box, or tell Claude to complete the purchase." },
       ),
-    abort: () => act(() => transport.abort(st.session_id!), { text: "I aborted the session in the widget.", fallback: "Aborted. Tell Claude in the chat that you stopped the session." }),
+    abort: () => act(() => transport.abort(st.session_id!), { text: "I stopped the session in the widget.", fallback: "Stopped. Tell Claude if you want to start again." }),
     toggle: (seq) => {
       if (st.expanded.has(seq)) st.expanded.delete(seq);
       else st.expanded.add(seq);
       draw(true);
     },
+    toggleFeed: () => {
+      st.feedOpen = !st.feedOpen;
+      draw(true);
+    },
   };
 
-  // A tool result from the host carries the session id (start_session) and means state changed.
+  // Every widget instance is fresh (the host renders one per tool call). The session id arrives
+  // in the tool's input arguments first, then in its structured result; either one is enough.
+  const adopt = (sid: unknown) => {
+    if (typeof sid !== "string" || sid === st.session_id) return;
+    st.session_id = sid;
+    st.snapshot = undefined;
+    st.events = [];
+    st.expanded.clear();
+    st.hint = undefined;
+    headSeq = 0;
+  };
+  transport.onToolInput = (tool, args) => {
+    // Remember which tool call rendered this instance: start/browse instances stay compact.
+    // The host's tool-input notification carries arguments only, so infer the tool from their shape.
+    if (!st.spawnedBy) st.spawnedBy = tool ?? inferTool(args);
+    adopt(args.session_id);
+    void refresh();
+  };
   transport.onToolResult = (structured) => {
-    const sid = typeof structured.session_id === "string" ? structured.session_id : undefined;
-    if (sid && sid !== st.session_id) {
-      st.session_id = sid;
-      st.snapshot = undefined;
-      st.events = [];
-      st.expanded.clear();
-      st.hint = undefined;
-      headSeq = 0;
-    }
+    adopt(structured.session_id);
     void refresh();
   };
 
@@ -158,6 +173,14 @@ function mergeEvents(have: SessionEvent[], more: SessionEvent[]): SessionEvent[]
   const bySeq = new Map(have.map((e) => [e.seq, e]));
   for (const e of more) bySeq.set(e.seq, e);
   return [...bySeq.values()].sort((a, b) => a.seq - b.seq);
+}
+
+function inferTool(args: Record<string, unknown>): string {
+  if ("quote_id" in args) return "purchase";
+  if ("recommended" in args) return "propose";
+  if ("query" in args) return "browse";
+  if ("objective" in args) return "start_session";
+  return "checkout";
 }
 
 function inIframeOfHost(): boolean {

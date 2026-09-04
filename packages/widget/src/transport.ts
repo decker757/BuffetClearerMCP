@@ -27,6 +27,8 @@ export interface Transport {
   nudge(text: string): Promise<boolean>;
   /** Fires when the host pushes a tool result (the model called a tool that renders this widget). */
   onToolResult?: (structured: Record<string, unknown>) => void;
+  /** Fires with the tool call's name and arguments, before the result: every model tool carries session_id. */
+  onToolInput?: (tool: string | undefined, args: Record<string, unknown>) => void;
   onThemeChange?: (theme: string | undefined) => void;
 }
 
@@ -42,10 +44,15 @@ export class HostTransport implements Transport {
   readonly canAct = true;
   readonly label = "widget";
   onToolResult?: (structured: Record<string, unknown>) => void;
+  onToolInput?: (tool: string | undefined, args: Record<string, unknown>) => void;
   onThemeChange?: (theme: string | undefined) => void;
   private readonly app = new App({ name: "Buffet monitor", version: "0.1.0" });
 
   async connect(): Promise<void> {
+    this.app.ontoolinput = (params) => {
+      const p = params as { name?: string; arguments?: Record<string, unknown> };
+      this.onToolInput?.(p.name, p.arguments ?? {});
+    };
     this.app.ontoolresult = (result: CallToolResult) => {
       if (!result.isError) this.onToolResult?.((result.structuredContent ?? {}) as Record<string, unknown>);
     };
@@ -98,6 +105,7 @@ export class HttpTransport implements Transport {
   readonly canAct = false;
   readonly label = "dashboard (read-only)";
   onToolResult?: (structured: Record<string, unknown>) => void;
+  onToolInput?: (tool: string | undefined, args: Record<string, unknown>) => void;
   onThemeChange?: (theme: string | undefined) => void;
   constructor(private readonly base: string) {}
 

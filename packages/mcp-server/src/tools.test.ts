@@ -56,6 +56,9 @@ async function harness(opts: { override?: Parameters<typeof startFakeShop>[0]["o
   const client = new Client({ name: "driver", version: "0" });
   await client.connect(ct);
   closers.push(() => client.close());
+  // Populate the client's tool cache so every callTool validates structuredContent against the
+  // declared outputSchema (the SDK only validates when it has seen the schema via tools/list).
+  await client.listTools();
   const call = async (name: string, args: Record<string, unknown>) => {
     const r = await client.callTool({ name, arguments: args });
     return { isError: r.isError === true, text: (r.content as Array<{ text?: string }>)[0]?.text ?? "", data: (r.structuredContent ?? {}) as Record<string, unknown> };
@@ -96,6 +99,9 @@ describe("tool surface", () => {
     expect(products.length).toBeGreaterThan(5);
     expect(products.some((p) => p.id === "p_b03")).toBe(true);
     expect(Object.keys(products[0]!)).not.toContain("description");
+    // Hosts may show the model only the text part: the product table must be there, and the session id too.
+    expect(browse.text).toMatch(/^p_b03 \| .* \| shop_b \| 349\.00 \| /m);
+    expect(browse.data.session_id).toBe(sid);
 
     const rec = products.filter((p) => p.id !== "p_b03").slice(0, 5).map((p) => p.id);
     const propose = await h.call("propose", {
@@ -105,7 +111,8 @@ describe("tool surface", () => {
       reason: "rank by sales and rating, flag the clearance listing",
     });
     expect(propose.isError).toBe(false);
-    expect(propose.data).toMatchObject({ recommended: 5, rejected: 1 });
+    expect(propose.data).toMatchObject({ session_id: sid, recommended: 5, rejected: 1 });
+    expect(propose.text).toMatch(/FLAGGED p_b03 .*61% below/);
 
     // checkout too early
     const early = await h.call("checkout", { session_id: sid, reason: "try" });
@@ -134,7 +141,8 @@ describe("tool surface", () => {
     expect((await h.call("approve_quote", { session_id: sid, quote_id })).isError).toBe(false);
     const purchase = await h.call("purchase", { session_id: sid, quote_id, reason: "user approved in the widget" });
     expect(purchase.isError).toBe(false);
-    expect(purchase.data).toMatchObject({ ok: true, spent: price, fee: "0.25" });
+    expect(purchase.data).toMatchObject({ session_id: sid, ok: true, spent: price, fee: "0.25" });
+    expect(purchase.text).toMatch(/settled, order o_\d+, tx https:\/\/testnet\.xrpl\.org\/transactions\//);
     const lines = purchase.data.lines as Array<{ status: string; tx_hash: string }>;
     expect(lines[0]).toMatchObject({ status: "settled" });
     expect(h.shop.paidRequests).toBe(1);

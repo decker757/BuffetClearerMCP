@@ -18,6 +18,10 @@ export interface UiState {
   approvedQuote?: string;
   /** shown when an action succeeded but the host did not deliver the nudge to the agent */
   hint?: string;
+  /** the model tool whose call rendered this instance (hosts render one instance per call) */
+  spawnedBy?: string;
+  /** feed expanded to all events (default: last few) */
+  feedOpen?: boolean;
 }
 
 export interface Actions {
@@ -26,6 +30,7 @@ export interface Actions {
   approve(quote_id: string): void;
   abort(): void;
   toggle(seq: number): void;
+  toggleFeed(): void;
 }
 
 const STEPS: Array<{ key: SessionStep; label: string }> = [
@@ -343,11 +348,21 @@ function summary(e: SessionEvent): string {
   }
 }
 
+const FEED_TAIL = 5;
+
 function feed(st: UiState, a: Actions, live: { inflight: boolean; inflightSince?: number }): HTMLElement {
   const { root, body } = card("Live feed", `${st.events.length} events · hash chain`);
   const list = el("div", "feed");
   const settledLines = new Set(st.events.filter((e) => e.type === "purchase.settled" || e.type === "purchase.failed").map((e) => String((e.payload as { line_id?: string }).line_id)));
-  for (const e of st.events) {
+  const shown = st.feedOpen ? st.events : st.events.slice(-FEED_TAIL);
+  if (!st.feedOpen && st.events.length > FEED_TAIL) {
+    const more = el("button", "", `show all ${st.events.length} events`);
+    more.addEventListener("click", () => a.toggleFeed());
+    const wrap = el("div", "note");
+    wrap.append(more);
+    list.append(wrap);
+  }
+  for (const e of shown) {
     const p = e.payload as Record<string, unknown>;
     const bad = e.type.endsWith(".refused") || e.type.endsWith(".failed") || e.type === "session.aborted" || e.type === "session.expired";
     const row = el("div", `row ${e.source === "agent" ? "agent" : ""} ${bad ? "bad" : ""}`);
@@ -372,6 +387,13 @@ function feed(st: UiState, a: Actions, live: { inflight: boolean; inflightSince?
       const pre = el("pre", "payload", JSON.stringify({ seq: e.seq, span: e.span_id, parent: e.parent_span_id, payload: e.payload, hash: e.hash }, null, 1));
       list.append(pre);
     }
+  }
+  if (st.feedOpen) {
+    const less = el("button", "", "show recent only");
+    less.addEventListener("click", () => a.toggleFeed());
+    const wrap = el("div", "note");
+    wrap.append(less);
+    list.append(wrap);
   }
   body.append(list);
   // Keep the newest events in view unless the user scrolled up to read.
@@ -429,17 +451,25 @@ export function render(rootEl: HTMLElement, st: UiState, a: Actions): void {
   const inflight = s.phase === "settling" || submitted.length > settled.length;
   const inflightSince = submitted.length > settled.length ? Date.parse(submitted.at(-1)!.ts) : undefined;
 
+  // Hosts render one instance per tool call. Instances spawned by start_session or browse have
+  // nothing for the user to do, so they stay compact; the propose/checkout/purchase instances
+  // (and the dashboard) render the full monitor.
+  const compact = st.transport.canAct && (st.spawnedBy === "start_session" || st.spawnedBy === "browse") && s.phase !== "done";
   frag.append(phaseStrip(s));
-  frag.append(budgetBar(s, { inflight }));
-  const table = decisionTable(s, st, a);
-  if (table) frag.append(table);
-  const form = billingForm(s, st, a);
-  if (form) frag.append(form);
-  const appr = approvalCard(s, st, a);
-  if (appr) frag.append(appr);
-  const rec = receipt(s, st.events);
-  if (rec) frag.append(rec);
-  frag.append(feed(st, a, { inflight, ...(inflightSince ? { inflightSince } : {}) }));
+  if (compact) {
+    frag.append(feed(st, a, { inflight, ...(inflightSince ? { inflightSince } : {}) }));
+  } else {
+    const rec = receipt(s, st.events);
+    if (rec) frag.append(rec);
+    frag.append(budgetBar(s, { inflight }));
+    const appr = approvalCard(s, st, a);
+    if (appr) frag.append(appr);
+    const form = billingForm(s, st, a);
+    if (form) frag.append(form);
+    const table = decisionTable(s, st, a);
+    if (table) frag.append(table);
+    frag.append(feed(st, a, { inflight, ...(inflightSince ? { inflightSince } : {}) }));
+  }
   if (st.error) frag.append(el("div", "card err", st.error));
   if (st.hint) frag.append(el("div", "card note", st.hint));
   const foot = el("div", "note mono", `${st.transport.label} · ${st.session_id ?? ""} · seq ${s.head_seq}${s.pool ? ` · pool idle ${s.pool.idle ?? 0}` : ""}`);
