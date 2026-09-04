@@ -521,6 +521,14 @@ Two runs on the same server, to show it isn't hardcoded to one category. Under
 three minutes total. **One item per run.** Mention the multi-item loop in one
 sentence; do not demo it. Have billing details ready to paste.
 
+**Making Claude pick the tool (learned 5 Sep).** With web search on and a bare
+"I want to buy a laptop", Claude Desktop answered from memory and the web and
+never called `start_session`. For the demo: turn **web search off** in the chat,
+use a **fresh chat** (memory pulled in old hardware notes), and **name the tool
+in the opening line**: "Use Buffet: I want to buy a laptop." Tool descriptions
+now say "use this first whenever the user wants to buy anything", but naming
+it is the guarantee. Click "Always allow" on each Buffet tool the first time.
+
 1. **The main run.** High-stakes purchase in VERTICAL. Say what you want. Agent
    asks for a budget; give a range. Show the 5 recommendations and the planted
    listing struck through with the agent's reason and the numbers. Select one in
@@ -1019,6 +1027,15 @@ server; nothing lives in the iframe.
 **One session, many items.** The cart loop in §15.1 runs inside one session: one
 checkout, one authorisation, one wallet, several lines, one receipt. This keeps
 one wallet per session and the ledger balances.
+
+**Several processes, one log.** Claude Desktop launches the stdio server more than
+once (the chat, plus its Cowork/Code pool). Each process has its own in-memory
+session map, but all append to the same `.sessions/*.jsonl` chain files. The
+HTTP reads (`/sessions/:id`, `/events`, `/verify`, `/dashboard`) therefore
+re-tail the log on every request and **project the snapshot from events**, so
+whichever process owns port 3001 can show any session. Billing content is never
+in the log; only its presence is. A stdio instance that loses the port keeps
+serving stdio.
 
 **Lifecycle:** `started` → `shopping` → `checkout` → `approved` → `settling` →
 `done` | `aborted` | `expired`. Abort before `settling` is a state change and an

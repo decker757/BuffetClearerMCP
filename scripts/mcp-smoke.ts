@@ -8,13 +8,24 @@
  * (npm run dev:mcp) running, pool provisioned, treasury funded.
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const MCP = process.env.MCP_URL ?? "http://localhost:3001";
 const [query = "usb-c cable", min = "5", max = "30"] = process.argv.slice(2);
+// MCP_TRANSPORT=stdio spawns a second server instance the way Claude Desktop does, while the
+// HTTP instance keeps the port; the reads at the end must still show this session (log projection).
+const useStdio = process.env.MCP_TRANSPORT === "stdio";
 
 const client = new Client({ name: "buffet-driver", version: "0.1.0" });
-await client.connect(new StreamableHTTPClientTransport(new URL(`${MCP}/mcp`)));
+if (useStdio) {
+  const main = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../packages/mcp-server/dist/main.js");
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [main, "--stdio"], stderr: "inherit" }));
+} else {
+  await client.connect(new StreamableHTTPClientTransport(new URL(`${MCP}/mcp`)));
+}
 
 async function call(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const t0 = Date.now();
@@ -26,6 +37,7 @@ async function call(name: string, args: Record<string, unknown>): Promise<Record
 }
 
 const { tools } = await client.listTools();
+console.log(`driver transport: ${useStdio ? "stdio (spawned a second server instance)" : `http ${MCP}`}`);
 console.log("tools:", tools.map((t) => t.name).join(", "));
 
 const start = await call("start_session", { objective: query, reason: "driver: user asked" });
@@ -71,4 +83,6 @@ console.log("\nreceipt:", JSON.stringify(receipt, null, 2));
 // What a judge can curl
 const verify = (await fetch(`${MCP}/sessions/${sid}/verify`).then((r) => r.json())) as { ok: boolean; events: number };
 console.log(`\nchain verify: ok=${verify.ok} over ${verify.events} events  ->  curl ${MCP}/sessions/${sid}/events`);
+const snap = (await fetch(`${MCP}/sessions/${sid}`).then((r) => r.json())) as { phase?: string; source?: string; ledger?: unknown };
+console.log(`snapshot via HTTP: phase=${snap.phase} source=${snap.source} ledger=${JSON.stringify(snap.ledger)}`);
 await client.close();

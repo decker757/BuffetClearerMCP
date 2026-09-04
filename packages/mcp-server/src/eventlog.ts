@@ -17,16 +17,40 @@ export class EventLog {
   constructor(private readonly dir?: string) {
     if (dir) {
       fs.mkdirSync(dir, { recursive: true });
-      for (const f of fs.readdirSync(dir)) {
-        if (!f.endsWith(".jsonl")) continue;
-        const events = fs
-          .readFileSync(path.join(dir, f), "utf8")
-          .split("\n")
-          .filter(Boolean)
-          .map((line) => SessionEventSchema.parse(JSON.parse(line)));
-        if (events.length > 0) this.chains.set(events[0]!.session_id, events);
-      }
+      for (const id of this.sessionsOnDisk()) this.reload(id);
     }
+  }
+
+  /** Session ids with a file on disk, newest first. Other processes may have written them. */
+  sessionsOnDisk(): string[] {
+    if (!this.dir) return [...this.chains.keys()];
+    return fs
+      .readdirSync(this.dir)
+      .filter((f) => f.endsWith(".jsonl"))
+      .map((f) => ({ id: f.slice(0, -6), mtime: fs.statSync(path.join(this.dir!, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime)
+      .map((x) => x.id);
+  }
+
+  /**
+   * Pick up lines appended by another process (Claude Desktop runs several stdio
+   * instances; whichever serves HTTP must see all of them). Only lines beyond our
+   * in-memory head are parsed, and only if they chain onto it.
+   */
+  reload(session_id: string): void {
+    if (!this.dir) return;
+    const file = path.join(this.dir, `${safeName(session_id)}.jsonl`);
+    if (!fs.existsSync(file)) return;
+    const chain = this.chains.get(session_id) ?? [];
+    const lines = fs.readFileSync(file, "utf8").split("\n").filter(Boolean);
+    if (lines.length <= chain.length) return;
+    for (const line of lines.slice(chain.length)) {
+      const ev = SessionEventSchema.parse(JSON.parse(line));
+      const prev = chain[chain.length - 1];
+      if (ev.seq !== (prev?.seq ?? 0) + 1 || ev.prev_hash !== (prev?.hash ?? GENESIS_HASH)) break; // never splice a foreign chain
+      chain.push(ev);
+    }
+    this.chains.set(session_id, chain);
   }
 
   append(e: NewEvent): SessionEvent {

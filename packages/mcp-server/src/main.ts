@@ -55,11 +55,13 @@ createHttpApp(deps)
     process.stderr.write(`buffet mcp-server: http://localhost:${port}/mcp  (pool ${JSON.stringify(deps.pool.counts())})\n`);
   })
   .on("error", (e: NodeJS.ErrnoException) => {
-    // One process owns the sessions. A second instance would have its own empty manager, so the
-    // dashboard would show nothing for Claude Desktop's sessions. Fail loudly instead.
+    // Claude Desktop launches several stdio instances (chat, plus its Cowork/Code pool). Only one
+    // can own the port; the others must keep serving stdio. HTTP reads project from the shared
+    // on-disk log, so whichever instance has the port can show every session.
     if (e.code === "EADDRINUSE") {
-      process.stderr.write(`buffet mcp-server: port ${port} is already in use. Stop the other instance; Claude Desktop's stdio process serves HTTP too.\n`);
-      process.exit(1);
+      process.stderr.write(`buffet mcp-server: port ${port} in use; this instance serves ${stdio ? "stdio only" : "nothing"}. Reads are served by the instance that owns the port.\n`);
+      if (!stdio) process.exit(1);
+      return;
     }
     throw e;
   });

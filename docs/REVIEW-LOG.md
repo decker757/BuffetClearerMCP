@@ -88,6 +88,16 @@ The short version, for anyone in a hurry:
 | Feed scroll reset to the top every second | The newest events were never visible in a 260px box | The feed stays pinned to the bottom unless the user scrolled up | manual check |
 | A render throw became an unhandled rejection every tick | One malformed candidate would blank the page silently | Render is wrapped; failures show as an error card | code review |
 
+## Phase 6, first Claude Desktop run (5 Sep)
+
+| What we did wrong | Why it mattered | What we changed | Guarded by |
+|---|---|---|---|
+| The phase 4 review said "one process owns the sessions", so a port conflict became a hard exit | Claude Desktop launches the stdio server **more than once** (the chat, plus its Cowork/Code pool). The second instance lost the race for port 3001 and exited; Claude Desktop showed the whole server as "Failed / Server disconnected" and the model fell back to web search. A fix that was right for one process was wrong for the real host | A stdio instance never dies over the HTTP port; it logs and keeps serving stdio. HTTP reads no longer depend on the in-memory manager: every read re-tails the on-disk event log and the snapshot is **projected from events**, so whichever instance owns the port can show any session. The log never splices a foreign chain onto its own | `projection.test.ts` "matches the live snapshot at every stage"; `eventlog` cross-process reload tests; the Claude Desktop log itself |
+
+| Tool descriptions described the tools, not when to use them | With the server connected and healthy, "I want to buy a laptop" still went to memory and web search; Claude never called `start_session`. A tool the model does not pick is a feature that does not exist on stage | Descriptions now lead with the trigger ("USE THIS FIRST whenever the user wants to buy, shop for, pick or compare a product of any kind; do not search the web instead"), titles carry the product name, and the server instructions say the same. Demo script: web search off, fresh chat, name the tool in the opening line | manual in Claude Desktop; CLAUDE.md §9 |
+
+Lesson for the six rules: **know how the host actually launches you before deciding what is fatal.** Read the host's log the first time, not the third. And **a tool the model does not choose does not exist**: describe the trigger, not the mechanism.
+
 ## Things we decided not to fix, and why (phase 4)
 
 - **App-only tools are enforced by the host.** ext-apps only stamps `_meta.ui.visibility`; the server has no way to know whether a `tools/call` came from the widget or the model. Claude honours the flag. A per-session widget token handed over the app bridge is the production fix and goes on the slide, not in the demo.

@@ -3,8 +3,8 @@ import cors from "cors";
 import express, { type Express } from "express";
 import type { Deps } from "./deps.js";
 import { EventLog } from "./eventlog.js";
+import { projectSnapshot } from "./projection.js";
 import { createServer } from "./server.js";
-import { SessionError } from "./session.js";
 
 /**
  * HTTP surface (CLAUDE.md §12): the MCP Streamable HTTP endpoint plus the two reads
@@ -45,26 +45,50 @@ export function createHttpApp(deps: Deps): Express {
   });
   app.get("/mcp", (_req, res) => res.status(405).json({ error: "stateless server: use POST /mcp" }));
 
-  app.get("/sessions/:id", (req, res) => {
-    try {
-      res.json({ ...deps.manager.snapshot(req.params.id), pool: deps.pool.counts() });
-    } catch (e) {
-      res.status(e instanceof SessionError ? 404 : 500).json({ error: e instanceof Error ? e.message : String(e) });
-    }
+  // Every read goes through the log, which is re-tailed from disk on each request, so a session
+  // owned by another process (Claude Desktop launches several) is still visible here.
+  const log = deps.manager.log;
+  const events = (id: string) => {
+    log.reload(id);
+    return log.all(id);
+  };
+
+  app.get("/sessions", (_req, res) => {
+    const ids = log.sessionsOnDisk().slice(0, 50);
+    res.json({
+      sessions: ids.map((id) => {
+        const snap = projectSnapshot(events(id));
+        return snap ? { session_id: id, objective: snap.objective, phase: snap.phase, head_seq: snap.head_seq } : { session_id: id };
+      }),
+    });
   });
 
-  // Events and verification come from the log, so they survive a restart even when the live session does not.
+  app.get("/sessions/:id", (req, res) => {
+    const id = req.params.id;
+    if (deps.manager.has(id)) {
+      res.json({ ...deps.manager.snapshot(id), pool: deps.pool.counts(), source: "live" });
+      return;
+    }
+    const snap = projectSnapshot(events(id));
+    if (!snap) {
+      res.status(404).json({ error: "unknown_session" });
+      return;
+    }
+    res.json({ ...snap, pool: deps.pool.counts(), source: "log" });
+  });
+
   app.get("/sessions/:id/events", (req, res) => {
-    if (deps.manager.log.all(req.params.id).length === 0) return res.status(404).json({ error: "unknown_session" });
+    const all = events(req.params.id);
+    if (all.length === 0) return res.status(404).json({ error: "unknown_session" });
     const after = Number.parseInt(String(req.query.after ?? "0"), 10);
-    const events = deps.manager.log.after(req.params.id, Number.isFinite(after) ? after : 0);
-    return res.json({ events, head_seq: deps.manager.log.head(req.params.id).seq });
+    const afterSeq = Number.isFinite(after) ? after : 0;
+    return res.json({ events: all.filter((e) => e.seq > afterSeq), head_seq: all[all.length - 1]!.seq });
   });
 
   app.get("/sessions/:id/verify", (req, res) => {
-    if (deps.manager.log.all(req.params.id).length === 0) return res.status(404).json({ error: "unknown_session" });
-    const events = deps.manager.log.all(req.params.id);
-    return res.json({ ...EventLog.verify(events), events: events.length, head: deps.manager.log.head(req.params.id) });
+    const all = events(req.params.id);
+    if (all.length === 0) return res.status(404).json({ error: "unknown_session" });
+    return res.json({ ...EventLog.verify(all), events: all.length, head: { seq: all[all.length - 1]!.seq, hash: all[all.length - 1]!.hash } });
   });
 
   return app;
