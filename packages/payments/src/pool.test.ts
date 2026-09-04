@@ -82,6 +82,34 @@ describe("wallet pool", () => {
     expect(pool.stale(-1)[0]!.address).toBe(w.address);
   });
 
+  it("two processes on one file never hand out the same wallet and see each other's state", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "buffet-pool2-"));
+    const file = path.join(dir, "pool.json");
+    fs.writeFileSync(file, JSON.stringify(entries()));
+    const a = WalletPool.fromFile(file); // process A
+    const b = WalletPool.fromFile(file); // process B, started with the same file
+    const wa = a.acquire("s_a");
+    const wb = b.acquire("s_b");
+    expect(wa.address).not.toBe(wb.address);
+    expect(b.counts()).toMatchObject({ idle: 0, funded: 2 });
+    expect(() => a.acquire("s_c")).toThrow(/pool_exhausted/);
+    // A settles and returns its wallet; B sees it without any hint from A
+    a.transition(wa.address, "paying");
+    a.transition(wa.address, "sweeping");
+    a.transition(wa.address, "idle");
+    expect(b.counts()).toMatchObject({ idle: 1, funded: 1 });
+    expect(b.acquire("s_c").address).toBe(wa.address);
+    // a late-starting process does NOT park wallets that live processes hold
+    const c = WalletPool.fromFile(file);
+    expect(c.counts()).toMatchObject({ funded: 2, attention: 0 });
+    // no stale lock or temp files left behind
+    expect(fs.readdirSync(dir)).toEqual(["pool.json"]);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   it("persists atomically through fromFile", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");

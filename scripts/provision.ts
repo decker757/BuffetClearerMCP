@@ -12,6 +12,7 @@ import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { WalletPool } from "@buffet/payments";
 import { Client, Wallet, type TrustSet } from "xrpl";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -66,11 +67,10 @@ async function provisionPool(c: Client, n: number): Promise<void> {
   console.log(`pool: ${saved.length} wallets ->`, file);
 }
 
-/** Operator action (§15.5): a parked wallet that holds no RLUSD is safe to hand out again. */
+/** Operator action (§15.5): a parked wallet that holds no RLUSD is safe to hand out again. Goes through the pool's lock. */
 async function repairPool(c: Client): Promise<void> {
-  const file = path.join(ROOT, ".wallets/pool.json");
-  const saved: Entry[] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
-  for (const e of saved) {
+  const pool = WalletPool.fromFile(path.join(ROOT, ".wallets/pool.json"));
+  for (const e of pool.status()) {
     if (e.state !== "attention") continue;
     const lines = await c.request({ command: "account_lines", account: e.address, peer: RLUSD_ISSUER });
     const bal = lines.result.lines.find((l) => l.currency === RLUSD_HEX)?.balance ?? "0";
@@ -78,11 +78,10 @@ async function repairPool(c: Client): Promise<void> {
       console.log(`${e.address}: attention, still holds ${bal} RLUSD; sweep it by hand before repairing`);
       continue;
     }
-    e.state = "idle";
-    delete (e as { session_id?: string }).session_id;
+    pool.repair(e.address);
     console.log(`${e.address}: attention -> idle`);
   }
-  fs.writeFileSync(file, JSON.stringify(saved, null, 2));
+  console.log("pool:", pool.counts());
 }
 
 async function main(): Promise<void> {
