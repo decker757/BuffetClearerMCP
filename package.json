@@ -12,13 +12,16 @@
   },
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "tsc -b packages/shared packages/mcp-server packages/widget scripts",
+    "typecheck": "tsc -b packages/shared packages/mcp-server packages/shops scripts && tsc -p packages/widget",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:widget": "npm run dev -w @buffet/widget",
     "dev:mcp": "npm run dev -w @buffet/mcp-server",
     "spike:xrpl": "tsx scripts/xrpl-spike.ts",
-    "fund:treasury": "tsx scripts/fund-treasury.ts"
+    "fund:treasury": "tsx scripts/fund-treasury.ts",
+    "provision": "tsx scripts/provision.ts",
+    "dev:shops": "npm run dev -w @buffet/shops",
+    "x402:buy": "tsx scripts/x402-buy.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

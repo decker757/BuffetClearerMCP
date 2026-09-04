@@ -441,11 +441,11 @@ The session wallet is our answer to both.
   `x402Fetch` that throws unless amount, asset, issuer and `payTo` all match;
   also pass `maxValue` as belt and braces. Anything else is refused and logged
   as `payment.refused`.
-- **Manifest memo.** `x402-xrpl` writes the invoice memo itself. Decide in the
-  phase 1 spike whether `preparePayment` lets us add a second memo; if not, the
-  MCP server passes the manifest hash in the order body and the shop folds it
-  into `invoiceId` (`<quote_id>:<line_id>:<manifest_hash>`), which the SDK then
-  binds into the Memo. Either way the hash is on-ledger in the purchase tx.
+- **Manifest memo (closed).** The MCP server passes `invoice_ref =
+  <quote_id>:<line_id>:<manifest_hash>` in the order body; the shop feeds it to
+  the SDK's `invoiceIdFactory`, and the payer binds it into the Memo and the
+  `InvoiceID` field of the Payment. The hash is on-ledger in the purchase tx and
+  the facilitator consumes the invoice once, so it doubles as replay protection.
 
 ### Policy, all enforced below the model
 
@@ -614,7 +614,7 @@ For "what about paid data" (roadmap, only if asked):
 | Product name | open | | before first commit |
 | Demo vertical | proposed: laptop, contrast USB-C cable — confirm | | before first commit |
 | x402 protocol version | **closed, 5 Sep** — v2, `x402-xrpl` 0.3.2, hosted testnet facilitator (§7) | | closed |
-| Manifest memo mechanism | second memo via `preparePayment` if the SDK allows, else folded into `invoiceId` (§7). Decide in the phase 1 spike | | phase 1 |
+| Manifest memo mechanism | **closed, 5 Sep** — folded into `invoiceId` as `<quote_id>:<line_id>:<manifest_hash>`. The shop's order endpoint takes it as `invoice_ref`, feeds it to the SDK's invoice id factory, and the SDK binds it into both the Memo and the `InvoiceID` field. Verified on-ledger in tx 467D1799…BC32 | | closed |
 | XRP or RLUSD | **RLUSD.** Dollars on the budget bar mean something; reserves are XRP regardless. Flip only if trustline setup blocks step 3 | | closed |
 | Event schema | **closed** — §12 | | closed |
 | Tool surface | **closed** — §3: browse / propose / checkout / purchase. The model does not choose URLs | | closed |

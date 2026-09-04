@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isMoney, normalize } from "../money.js";
+import { isMoney, normalize, toCents } from "../money.js";
 
 /** Accepts "12", "12.5", " 12.50 "; always outputs the canonical "12.50". */
 export const MoneySchema = z
@@ -22,11 +22,16 @@ export const ProductSchema = z.object({
 });
 export type Product = z.infer<typeof ProductSchema>;
 
-export const BrowseQuerySchema = z.object({
-  q: z.string().min(1).max(200),
-  min_price: MoneySchema,
-  max_price: MoneySchema,
-});
+export const BrowseQuerySchema = z
+  .object({
+    q: z.string().min(1).max(200),
+    min_price: MoneySchema,
+    max_price: MoneySchema,
+  })
+  .refine((q) => toCents(q.min_price) <= toCents(q.max_price), {
+    message: "min_price must be <= max_price",
+    path: ["min_price"],
+  });
 export type BrowseQuery = z.infer<typeof BrowseQuerySchema>;
 
 export const BrowseResultSchema = z.object({

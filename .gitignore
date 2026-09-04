@@ -225,3 +225,4 @@ dist/
 !.env.example
 *.tsbuildinfo
 .wallets/
+.outbox/

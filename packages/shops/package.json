@@ -1,0 +1,22 @@
+{
+  "name": "@buffet/shops",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@buffet/shared": "*",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "x402-xrpl": "^0.3.2",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
+}

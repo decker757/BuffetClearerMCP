@@ -9,6 +9,7 @@
   "dependencies": {
     "@buffet/shared": "*",
     "dotenv": "^16.5.0",
+    "x402-xrpl": "^0.3.2",
     "xrpl": "^4.6.0"
   }
 }
