@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="760" viewBox="0 0 1240 760" font-family="system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="14">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#374151"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+  </defs>
+  <style>
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; rx: 10; }
+    .zone { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1; rx: 14; }
+    .title { font-weight: 700; font-size: 15px; fill: #0f172a; }
+    .label { fill: #334155; }
+    .muted { fill: #64748b; font-size: 12px; }
+    .zoneTitle { font-weight: 700; font-size: 12px; fill: #64748b; letter-spacing: 0.08em; }
+    .fiat { stroke: #2563eb; stroke-width: 2; fill: none; stroke-dasharray: 7 5; }
+    .chain { stroke: #16a34a; stroke-width: 2; fill: none; }
+    .mcp { stroke: #374151; stroke-width: 2; fill: none; }
+    .edge { fill: #334155; font-size: 12px; }
+    .pill { fill: #eef2ff; stroke: #c7d2fe; rx: 8; }
+    .pillText { fill: #3730a3; font-size: 12px; }
+  </style>
+
+  <rect width="1240" height="760" fill="#ffffff"/>
+  <text x="24" y="34" class="title" font-size="20">Buffet: supervised agent shopping on XRPL</text>
+  <text x="24" y="54" class="muted">Fiat in via card, stablecoin out via XRPL, the server is the bridge. The model's only spending primitive is purchase(quote_id), and it only settles a quote the human approved.</text>
+
+  <!-- Zones -->
+  <rect x="24" y="80" width="250" height="600" class="zone"/>
+  <text x="40" y="102" class="zoneTitle">CUSTOMER</text>
+  <rect x="300" y="80" width="520" height="600" class="zone"/>
+  <text x="316" y="102" class="zoneTitle">BUFFET  (the product: MCP server + widget)</text>
+  <rect x="846" y="80" width="370" height="600" class="zone"/>
+  <text x="862" y="102" class="zoneTitle">XRPL TESTNET  +  MERCHANT (mocked for the demo)</text>
+
+  <!-- Customer column -->
+  <rect x="48" y="126" width="202" height="62" class="box"/>
+  <text x="64" y="150" class="title">User</text>
+  <text x="64" y="170" class="label">intent first, judgment last</text>
+
+  <rect x="48" y="236" width="202" height="62" class="box"/>
+  <text x="64" y="260" class="title">Claude (chat)</text>
+  <text x="64" y="280" class="label">the shopping agent: lookup only</text>
+
+  <rect x="48" y="346" width="202" height="150" class="box"/>
+  <text x="64" y="370" class="title">Monitor widget</text>
+  <text x="64" y="390" class="muted">MCP App inline in the chat</text>
+  <text x="64" y="412" class="label">phase strip · budget bar</text>
+  <text x="64" y="430" class="label">flagged rows struck through</text>
+  <text x="64" y="448" class="label">select · billing · approve</text>
+  <text x="64" y="466" class="label">receipt with explorer links</text>
+  <text x="64" y="486" class="muted">also /dashboard, read-only</text>
+
+  <rect x="48" y="544" width="202" height="62" class="box"/>
+  <text x="64" y="568" class="title">User's card</text>
+  <text x="64" y="588" class="label">authorise total → capture spent</text>
+
+  <!-- Buffet column -->
+  <rect x="324" y="126" width="220" height="150" class="box"/>
+  <text x="340" y="150" class="title">Model-facing tools</text>
+  <text x="340" y="172" class="label">start_session · browse</text>
+  <text x="340" y="190" class="label">propose · checkout · purchase</text>
+  <text x="340" y="212" class="muted">every call takes a reason →</text>
+  <text x="340" y="228" class="muted">agent.intent event, labelled "agent"</text>
+  <text x="340" y="252" class="muted">browse refuses without a price range</text>
+
+  <rect x="576" y="126" width="220" height="150" class="box"/>
+  <text x="592" y="150" class="title">App-only tools</text>
+  <text x="592" y="168" class="muted">visibility: ["app"], the model never sees them</text>
+  <text x="592" y="192" class="label">select_candidate · submit_billing</text>
+  <text x="592" y="210" class="label">approve_quote · abort_session</text>
+  <text x="592" y="228" class="label">session_snapshot · session_events</text>
+  <text x="592" y="252" class="muted">approval: single-use, bound to quote hash</text>
+
+  <rect x="324" y="306" width="472" height="96" class="box"/>
+  <text x="340" y="330" class="title">Session manager + event log</text>
+  <text x="340" y="352" class="label">server-side state only · billing held per session, never in an event or result</text>
+  <text x="340" y="370" class="label">append-only, hash-chained, seq-ordered log · one JSONL file per session</text>
+  <text x="340" y="390" class="muted">manifest hash = chain head at approval · GET /sessions/:id/verify re-hashes from genesis</text>
+
+  <rect x="324" y="432" width="472" height="220" class="box"/>
+  <text x="340" y="456" class="title">Payments layer</text>
+  <text x="340" y="480" class="label">wallet pool: pre-provisioned, trustlines set; idle → funded → paying → swept</text>
+  <text x="340" y="500" class="label">policy, below the model: quoted == demanded · payTo == registered · RLUSD only</text>
+  <text x="340" y="520" class="label">x402 client (x402-xrpl): policy injected as the requirement selector</text>
+  <text x="340" y="540" class="label">ledger verifier: a shop's "already settled" claim is checked on-chain</text>
+  <text x="340" y="560" class="label">card: capture = what the ledger says left the wallet + flat fee; release the rest</text>
+  <rect x="340" y="580" width="440" height="56" class="pill"/>
+  <text x="352" y="600" class="pillText">Invariant 1: the session wallet holds exactly the item total. Nothing else exists to spend.</text>
+  <text x="352" y="618" class="pillText">Invariant 6: funded = settled + released, to the cent, read from the ledger.</text>
+
+  <!-- Right column -->
+  <rect x="870" y="126" width="322" height="70" class="box"/>
+  <text x="886" y="150" class="title">Treasury wallet (Buffet's)</text>
+  <text x="886" y="170" class="label">RLUSD + XRP reserve · topped up as a treasury op</text>
+  <text x="886" y="186" class="muted">testnet: bought from the XRP/RLUSD AMM</text>
+
+  <rect x="870" y="230" width="322" height="70" class="box"/>
+  <text x="886" y="254" class="title">Session wallet pool</text>
+  <text x="886" y="274" class="label">one wallet per session, funded to the cent</text>
+  <text x="886" y="290" class="muted">shared file, locked per mutation across processes</text>
+
+  <rect x="870" y="334" width="322" height="126" class="box"/>
+  <text x="886" y="358" class="title">Merchant  (two mock shops)</text>
+  <text x="886" y="378" class="label">GET /products — free browse, 400 without a range</text>
+  <text x="886" y="396" class="label">POST /orders — x402-gated, 402 with RLUSD terms</text>
+  <text x="886" y="414" class="label">idempotent on invoice_ref · stock held per quote</text>
+  <text x="886" y="432" class="label">invoice email on settlement</text>
+  <text x="886" y="450" class="muted">in production: a real shop that added one header</text>
+
+  <rect x="870" y="494" width="322" height="62" class="box"/>
+  <text x="886" y="518" class="title">t54 x402 facilitator (hosted, testnet)</text>
+  <text x="886" y="538" class="label">verify + settle the presigned Payment</text>
+
+  <rect x="870" y="590" width="322" height="70" class="box"/>
+  <text x="886" y="614" class="title">XRP Ledger (testnet)</text>
+  <text x="886" y="634" class="label">RLUSD Payments · memo = quote:line:manifest_hash</text>
+  <text x="886" y="650" class="muted">the record neither we nor the vendor can rewrite</text>
+
+  <!-- Edges: customer side (orthogonal, routed through the gaps between boxes) -->
+  <line x1="149" y1="188" x2="149" y2="236" class="mcp" marker-end="url(#arrow)"/>
+  <text x="156" y="216" class="edge">"I want a laptop"</text>
+  <line x1="250" y1="267" x2="324" y2="267" class="mcp" marker-end="url(#arrow)"/>
+  <text x="256" y="258" class="edge">MCP</text>
+  <polyline points="250,377 290,377 290,291 686,291 686,276" class="mcp" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <text x="330" y="287" class="edge">widget ↔ app-only tools, over the host bridge</text>
+  <line x1="149" y1="496" x2="149" y2="544" class="mcp" marker-end="url(#arrow)"/>
+  <text x="156" y="524" class="edge">approve</text>
+  <line x1="250" y1="575" x2="324" y2="575" class="fiat" marker-end="url(#arrowBlue)"/>
+  <text x="60" y="628" class="edge" fill="#2563eb">fiat leg: authorise for the total,</text>
+  <text x="60" y="644" class="edge" fill="#2563eb">capture what settled (mocked;</text>
+  <text x="60" y="660" class="edge" fill="#2563eb">Stripe test mode is the next step)</text>
+
+  <!-- Edges: chain side -->
+  <polyline points="796,470 833,470 833,160 870,160" class="chain" marker-end="url(#arrowGreen)"/>
+  <text class="edge" fill="#16a34a" text-anchor="middle" transform="translate(829 315) rotate(-90)">card ok → fund session</text>
+  <polyline points="796,520 855,520 855,400 870,400" class="mcp" marker-end="url(#arrow)"/>
+  <text class="edge" text-anchor="middle" transform="translate(863 462) rotate(-90)">browse · order</text>
+  <line x1="1031" y1="196" x2="1031" y2="230" class="chain" marker-end="url(#arrowGreen)" marker-start="url(#arrowGreen)"/>
+  <text x="1040" y="218" class="edge" fill="#16a34a">fund to the cent / sweep the rest</text>
+  <line x1="1031" y1="300" x2="1031" y2="334" class="chain" marker-end="url(#arrowGreen)"/>
+  <text x="1040" y="322" class="edge" fill="#16a34a">x402 Payment in RLUSD, per shop</text>
+  <line x1="1031" y1="460" x2="1031" y2="494" class="chain" marker-end="url(#arrowGreen)" marker-start="url(#arrowGreen)"/>
+  <text x="1040" y="482" class="edge" fill="#16a34a">402 · signature · response</text>
+  <line x1="1031" y1="556" x2="1031" y2="590" class="chain" marker-end="url(#arrowGreen)"/>
+  <text x="1040" y="578" class="edge" fill="#16a34a">settled, tx hash back</text>
+
+  <!-- Legend -->
+  <line x1="24" y1="706" x2="64" y2="706" class="mcp"/>
+  <text x="70" y="710" class="muted">MCP / HTTP</text>
+  <line x1="160" y1="706" x2="200" y2="706" class="fiat"/>
+  <text x="206" y="710" class="muted">fiat (card)</text>
+  <line x1="290" y1="706" x2="330" y2="706" class="chain"/>
+  <text x="336" y="710" class="muted">RLUSD on XRPL</text>
+  <text x="24" y="740" class="muted">Two rails, one bridge. The card never touches the ledger; the ledger never touches the card. Server code links them: hold → fund; settle → capture.</text>
+</svg>

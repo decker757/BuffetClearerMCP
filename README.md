@@ -37,6 +37,11 @@ The session wallet is our answer to "why not just give the agent a card with a l
 
 ## Architecture
 
+![Buffet architecture](docs/architecture.svg)
+
+<details>
+<summary>Text version</summary>
+
 ```
 User's card ──authorise / capture (mocked; Stripe test mode is the next step)──▶ Buffet   [fiat leg]
                                                                                   │
@@ -64,6 +69,8 @@ Claude (chat) ── MCP ──▶ Buffet MCP server                            
           ui:// resource (MCP Apps widget)   ◀── polls app-only tools
           /dashboard?session=<id>            ◀── same bundle, read-only, over HTTP
 ```
+
+</details>
 
 **Two rails, one bridge.** The card never touches the ledger. The treasury holds RLUSD; on testnet it is bought from the XRP/RLUSD AMM. The only link between the legs is server code: card authorised, therefore fund the session; lines settled, therefore capture. Buffet is the merchant of record: you pay in fiat for a service with a price cap, and the on-chain spend is our treasury paying our suppliers. You never hold stablecoin and we never hold a balance for you.
 
