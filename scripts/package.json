@@ -1,0 +1,14 @@
+{
+  "name": "@buffet/scripts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike:xrpl": "tsx xrpl-spike.ts"
+  },
+  "dependencies": {
+    "@buffet/shared": "*",
+    "dotenv": "^16.5.0",
+    "xrpl": "^4.6.0"
+  }
+}

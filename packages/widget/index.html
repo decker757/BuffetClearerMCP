@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Buffet monitor</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; padding: 12px; }
+      .box { border: 1px solid #8884; border-radius: 10px; padding: 14px; max-width: 520px; }
+      .title { font-weight: 600; margin: 0 0 6px; }
+      .muted { opacity: 0.7; font-size: 13px; }
+      .row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+      code { font-size: 12px; }
+      button { padding: 6px 10px; border-radius: 8px; border: 1px solid #8886; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <p class="title">Buffet monitor: hello world</p>
+      <p class="muted">If you can read this inside Claude, the MCP App renders. Step 1 of CLAUDE.md §5 passes.</p>
+      <div class="row">
+        <span>Session:</span> <code id="session">waiting for tool result</code>
+      </div>
+      <div class="row">
+        <span>Server time:</span> <code id="time">-</code>
+        <button id="ping">Ping server</button>
+      </div>
+      <div class="row muted" id="host">host: unknown</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

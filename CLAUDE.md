@@ -369,7 +369,13 @@ Write one paragraph in the README on which parts we used and how.
 ### Verified values (2026-09-05, from the Starter Kit docs)
 
 - RLUSD testnet issuer: `rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV`. Currency code as
-  40-hex: `524C555344000000000000000000000000000000`. Faucet: tryrlusd.com.
+  40-hex: `524C555344000000000000000000000000000000`.
+- **Getting testnet RLUSD: do not use the web faucet.** tryrlusd.com needs a
+  GitHub login plus a browser wallet extension and caps at 10 RLUSD per day.
+  Testnet has an XRP/RLUSD AMM (~700k XRP / ~250k RLUSD, about 2.8 XRP per
+  RLUSD). `npm run fund:treasury -- <amount>` pulls XRP from the XRP faucet
+  and swaps through the AMM with a cross-currency self-payment. Verified
+  5 Sep: 92 XRP → 32.66 RLUSD in one tx.
 - Testnet WebSocket: `wss://s.altnet.rippletest.net:51233`.
 - Reserves from `ripple/skills/xrpl-agentic-resources/resources/xrpl-fee-settings.json`:
   base 1 XRP, owner 0.2 XRP per object, base fee 10 drops. Re-run `refresh.sh`
@@ -612,6 +618,7 @@ For "what about paid data" (roadmap, only if asked):
 | XRP or RLUSD | **RLUSD.** Dollars on the budget bar mean something; reserves are XRP regardless. Flip only if trustline setup blocks step 3 | | closed |
 | Event schema | **closed** — §12 | | closed |
 | Tool surface | **closed** — §3: browse / propose / checkout / purchase. The model does not choose URLs | | closed |
+| Widget host | **closed, 5 Sep** — Claude Desktop, local stdio server in `claude_desktop_config.json`. Hello-world MCP App rendered inline on the first attempt (§5 step 1 passed). Tunnel + custom connector is the fallback only | | closed |
 | OpenWallet | 30-minute timebox during step 4 | | step 4 |
 | Stripe | mocked; real only after everything else is green | | step 11 |
 | Fee amount | flat, placeholder $0.25. Team message proposed +1.5%; that is a take rate, and "tax" is the wrong word. Reopen only with a receipt line that says "service fee" | | step 6 |

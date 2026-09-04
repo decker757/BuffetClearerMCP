@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- monorepo ---
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.wallets/
