@@ -1,61 +1,79 @@
+import { MockCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, type RegisteredShop } from "@buffet/payments";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import cors from "cors";
 import dotenv from "dotenv";
-import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertWidgetBuilt, createServer } from "./server.js";
+import { Wallet } from "xrpl";
+import type { Deps } from "./deps.js";
+import { EventLog } from "./eventlog.js";
+import { createHttpApp } from "./http.js";
+import { createServer } from "./server.js";
+import { SessionManager } from "./session.js";
 
-// Claude Desktop's cwd is not the repo, so load .env by path. `quiet` keeps dotenv
-// off stdout, which is the protocol channel in stdio mode.
+/**
+ * Real wiring. `--stdio` adds the stdio transport for Claude Desktop; the HTTP
+ * surface (MCP over HTTP, read endpoints for the dashboard and curl) always runs.
+ * Claude Desktop's cwd is not the repo, so every path is absolute.
+ */
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 dotenv.config({ path: path.join(ROOT, ".env"), quiet: true });
-assertWidgetBuilt();
 
-// `--stdio` for Claude Desktop (claude_desktop_config.json); default is Streamable HTTP
-// on /mcp for the ext-apps basic-host and for a custom connector behind a tunnel.
+const WIDGET_HTML = path.join(ROOT, "packages/widget/dist/index.html");
+if (!fs.existsSync(WIDGET_HTML)) throw new Error(`widget bundle missing at ${WIDGET_HTML}; run: npm run build -w @buffet/widget`);
 
-async function startStdio(): Promise<void> {
-  const server = createServer();
+function treasury(): { seed: string; address: string } {
+  const seed = process.env.TREASURY_SEED || (JSON.parse(fs.readFileSync(path.join(ROOT, ".wallets/spike.json"), "utf8")) as { treasury: string }).treasury;
+  return { seed, address: Wallet.fromSeed(seed).address };
+}
+
+const rlusd = {
+  currencyHex: process.env.RLUSD_CURRENCY_HEX ?? "524C555344000000000000000000000000000000",
+  issuer: process.env.RLUSD_ISSUER ?? "rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV",
+};
+const shopsUrl = process.env.SHOPS_URL ?? `http://localhost:${process.env.SHOPS_PORT ?? "4002"}`;
+let registry: Record<string, RegisteredShop> | undefined;
+
+const deps: Deps = {
+  manager: new SessionManager(new EventLog(path.join(ROOT, ".sessions")), process.env.SERVICE_FEE ?? "0.25"),
+  shopsUrl,
+  fetchImpl: fetch,
+  ledger: new XrplLedger(process.env.XRPL_WS_URL ?? "wss://s.altnet.rippletest.net:51233", rlusd),
+  pool: WalletPool.fromFile(path.join(ROOT, ".wallets/pool.json")),
+  card: new MockCardAuthoriser(),
+  treasury: treasury(),
+  rlusd,
+  network: (process.env.XRPL_NETWORK ?? "xrpl:1") as Deps["network"],
+  loadRegistry: async () => (registry ??= await loadShopRegistry(shopsUrl)),
+  widgetHtml: WIDGET_HTML,
+};
+
+const port = Number.parseInt(process.env.MCP_PORT ?? "3001", 10);
+const stdio = process.argv.includes("--stdio");
+createHttpApp(deps)
+  .listen(port, () => {
+    process.stderr.write(`buffet mcp-server: http://localhost:${port}/mcp  (pool ${JSON.stringify(deps.pool.counts())})\n`);
+  })
+  .on("error", (e: NodeJS.ErrnoException) => {
+    // One process owns the sessions. A second instance would have its own empty manager, so the
+    // dashboard would show nothing for Claude Desktop's sessions. Fail loudly instead.
+    if (e.code === "EADDRINUSE") {
+      process.stderr.write(`buffet mcp-server: port ${port} is already in use. Stop the other instance; Claude Desktop's stdio process serves HTTP too.\n`);
+      process.exit(1);
+    }
+    throw e;
+  });
+
+// §15.5 expiry: abandoned sessions are expired; nothing is funded before purchase, so this is state only.
+const SESSION_MAX_AGE_MS = Number.parseInt(process.env.SESSION_MAX_AGE_MS ?? String(30 * 60_000), 10);
+setInterval(() => {
+  const expired = deps.manager.expireStale(SESSION_MAX_AGE_MS);
+  if (expired.length > 0) process.stderr.write(`buffet mcp-server: expired ${expired.length} stale session(s)\n`);
+}, 60_000).unref();
+
+if (stdio) {
+  const server = createServer(deps);
   await server.connect(new StdioServerTransport());
-  // Never write to stdout here: it is the protocol channel.
+  // stdout is the protocol channel in stdio mode; log to stderr only.
   process.stderr.write("buffet mcp-server: stdio transport connected\n");
-}
-
-async function startHttp(): Promise<void> {
-  const port = Number.parseInt(process.env.MCP_PORT ?? "3001", 10);
-  const app = express();
-  // Tighten to the tunnel / host origin before anything spendable exists (phase 3).
-  const origin = process.env.MCP_CORS_ORIGIN ?? "*";
-  app.use(cors({ origin, exposedHeaders: ["Mcp-Session-Id"] }));
-  app.use(express.json({ limit: "1mb" }));
-
-  app.get("/health", (_req, res) => res.json({ ok: true, name: "buffet" }));
-
-  app.post("/mcp", async (req, res) => {
-    // Stateless: one server + transport per request, per the ext-apps example.
-    const server = createServer();
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    res.on("close", () => {
-      void transport.close();
-      void server.close();
-    });
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-  });
-
-  app.get("/mcp", (_req, res) => {
-    res.status(405).json({ error: "stateless server: use POST /mcp" });
-  });
-
-  app.listen(port, () => {
-    console.log(`buffet mcp-server: http://localhost:${port}/mcp`);
-  });
-}
-
-if (process.argv.includes("--stdio")) {
-  await startStdio();
-} else {
-  await startHttp();
 }

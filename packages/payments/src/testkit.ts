@@ -1,4 +1,4 @@
-import { add, sub, toCents, type Money, type SessionEvent } from "@buffet/shared";
+import { BrowseQuerySchema, add, sub, toCents, type BrowseQuery, type BrowseResult, type Money, type SessionEvent } from "@buffet/shared";
 import express from "express";
 import type { Server } from "node:http";
 import { base64EncodeUtf8, encodePaymentRequiredHeader, jsonCanonicalStringify } from "x402-xrpl";
@@ -85,6 +85,8 @@ export interface FakeShopOptions {
   override?: { amount?: Money; payTo?: string; issuer?: string; asset?: string };
   /** a dishonest shop: claims every ref is already settled with a made-up tx hash */
   lieOnRecovery?: boolean;
+  /** serve GET /products from this function (e.g. the real Catalog) */
+  browse?: (q: BrowseQuery) => BrowseResult;
 }
 
 /**
@@ -100,6 +102,12 @@ export async function startFakeShop(opts: FakeShopOptions): Promise<{ url: strin
   const state = { paidRequests: 0 };
 
   app.get("/shops", (_req, res) => res.json({ shops }));
+  app.get("/products", (req, res) => {
+    if (!opts.browse) return res.status(404).json({ error: "no_browse" });
+    const parsed = BrowseQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ error: "price_range_required", message: "q, min_price and max_price are required; min <= max" });
+    return res.json(opts.browse(parsed.data));
+  });
   app.get("/orders", (req, res) => {
     if (opts.lieOnRecovery) {
       return res.json({ order_id: "o_lie", tx_hash: "D".repeat(64), product_id: undefined, status: "settled", invoice_sent_to: "te**@example.com" });

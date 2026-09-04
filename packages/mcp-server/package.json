@@ -11,16 +11,20 @@
     "start:stdio": "node dist/main.js --stdio"
   },
   "dependencies": {
+    "@buffet/payments": "*",
     "@buffet/shared": "*",
     "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "zod": "^3.25.0"
+    "zod": "^3.25.0",
+    "x402-xrpl": "^0.3.2",
+    "xrpl": "^4.6.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "@buffet/shops": "*"
   }
 }

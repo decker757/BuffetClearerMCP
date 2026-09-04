@@ -134,7 +134,8 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
       } else {
         input.pool.transition(wallet.address, "attention");
         await safeRelease(input, auth_id, quote.total, "funding_failed", span);
-        throw e;
+        // Nothing moved and the hold is released: the caller may let the user approve again.
+        throw new PolicyError("funding_failed", e instanceof Error ? e.message : String(e));
       }
     }
     if (fund_tx) {
@@ -147,10 +148,19 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
       });
     }
   }
-  const startBalance = await ledger.rlusdBalance(wallet.address);
+  // From here on money is in the wallet: any unexpected throw parks the wallet for an operator and
+  // is re-thrown as a plain Error, which the caller must NOT treat as "retry by re-approving".
+  let startBalance: Money;
+  try {
+    startBalance = await ledger.rlusdBalance(wallet.address);
+    input.pool.transition(wallet.address, "paying");
+  } catch (e) {
+    input.pool.transition(wallet.address, "attention");
+    sink.emit({ type: "purchase.failed", source: "server", span_id: span, payload: { rule: "unexpected_after_funding", message: e instanceof Error ? e.message : String(e), wallet: wallet.address } });
+    throw new Error(`unexpected after funding: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   // 3. Pay each pending line, sequentially, checking the wallet can cover it first (budget is the balance).
-  input.pool.transition(wallet.address, "paying");
   for (const line of pending) {
     const spendable = await ledger.rlusdBalance(wallet.address);
     if (lt(spendable, line.price)) {

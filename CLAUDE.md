@@ -16,6 +16,11 @@ Project guide for humans and coding agents. Read this before writing code.
 > against that README before §14 here. Run `git submodule update --init` after
 > cloning.
 
+> **Read `docs/REVIEW-LOG.md` before touching `/payments` or `/shops`.** It is the
+> record of every mistake the phase reviews caught, why it mattered, and the test
+> that now guards it. Each phase appends a section. The six rules at the top are
+> the ones we keep re-learning.
+
 > **4 Sep team decisions are in §15 and are authoritative.** The flow is: free
 > browse → 5 recommendations → user selects in the widget → billing in the widget
 > → card charged for the exact total → session wallet funded to that total → x402
@@ -609,6 +614,10 @@ For "what about paid data" (roadmap, only if asked):
 - Secrets in `.env`, never in logs, tool responses, events, the manifest, or
   anything the model or the widget can see.
 - Testnet everywhere. No mainnet keys in the repo, not even commented out.
+- **Every phase ends with an independent review, and its findings go into
+  `docs/REVIEW-LOG.md`** in the same table format: what we did wrong, why it
+  mattered, what changed, which test guards it. Nothing is committed before the
+  findings are applied.
 
 ---
 

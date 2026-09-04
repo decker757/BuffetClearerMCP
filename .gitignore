@@ -226,3 +226,4 @@ dist/
 *.tsbuildinfo
 .wallets/
 .outbox/
+.sessions/
