@@ -5,29 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Buffet monitor</title>
     <style>
-      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-      body { margin: 0; padding: 12px; }
-      .box { border: 1px solid #8884; border-radius: 10px; padding: 14px; max-width: 520px; }
-      .title { font-weight: 600; margin: 0 0 6px; }
-      .muted { opacity: 0.7; font-size: 13px; }
-      .row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
-      code { font-size: 12px; }
-      button { padding: 6px 10px; border-radius: 8px; border: 1px solid #8886; cursor: pointer; }
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --line: #e5e7eb; --card: #f9fafb;
+        --accent: #2563eb; --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --agent: #7c3aed; --chip: #eef2ff;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 13px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #111214; --fg: #e5e7eb; --muted: #9ca3af; --line: #2a2d33; --card: #1a1c20; --chip: #1f2340; }
+      }
+      html[data-theme="dark"] { --bg: #111214; --fg: #e5e7eb; --muted: #9ca3af; --line: #2a2d33; --card: #1a1c20; --chip: #1f2340; }
+      html[data-theme="light"] { --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --line: #e5e7eb; --card: #f9fafb; --chip: #eef2ff; }
+      body { margin: 0; padding: 10px; background: var(--bg); color: var(--fg); }
+      * { box-sizing: border-box; }
+      .app { display: grid; gap: 10px; max-width: 760px; }
+      .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--card); }
+      .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+      .hd h3 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--muted); }
+      .muted { color: var(--muted); }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+      /* phase strip */
+      .strip { display: flex; gap: 4px; flex-wrap: wrap; }
+      .strip span { padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+      .strip span.done { border-color: var(--ok); color: var(--ok); }
+      .strip span.now { background: var(--accent); border-color: var(--accent); color: #fff; }
+      .strip span.end { border-color: var(--bad); color: var(--bad); }
+      /* budget bar */
+      .bar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; display: flex; margin: 6px 0 4px; }
+      .bar div { height: 100%; }
+      .bar .settled { background: var(--ok); } .bar .inflight { background: var(--warn); } .bar .fee { background: var(--agent); }
+      .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; }
+      .legend b { font-weight: 600; }
+      /* table */
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+      tr.rejected td.name > span:first-child { text-decoration: line-through; color: var(--muted); }
+      tr.rejected td.name .evidence { text-decoration: none; }
+      tr.selected td { background: color-mix(in srgb, var(--ok) 10%, transparent); }
+      td.num { text-align: right; white-space: nowrap; }
+      td:last-child { white-space: nowrap; }
+      .chip { display: inline-block; white-space: nowrap; padding: 1px 7px; border-radius: 999px; font-size: 11px; background: var(--chip); color: var(--agent); border: 1px solid transparent; margin-left: 4px; }
+      .chip.agent { color: var(--agent); }
+      .chip.server { color: var(--ok); }
+      .chip.bad { color: var(--bad); }
+      .evidence { margin-top: 3px; font-size: 11px; color: var(--muted); }
+      /* feed */
+      .feed { display: grid; gap: 2px; max-height: 260px; overflow: auto; }
+      .row { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: baseline; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
+      .row:hover { background: var(--line); }
+      .row.agent .sum { font-style: italic; color: var(--agent); }
+      .row.bad .sum { color: var(--bad); }
+      .row .dur { color: var(--muted); font-size: 11px; white-space: nowrap; }
+      .row .live { color: var(--warn); }
+      .payload { grid-column: 1 / -1; margin: 0 0 4px 28px; white-space: pre-wrap; word-break: break-all; font-size: 11px; color: var(--muted); }
+      /* forms & buttons */
+      button { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; font: inherit; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      button.danger { border-color: var(--bad); color: var(--bad); }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .form { display: grid; gap: 6px; grid-template-columns: 1fr 1fr; }
+      .form label { display: grid; gap: 2px; font-size: 12px; color: var(--muted); }
+      .form label.wide { grid-column: 1 / -1; }
+      input { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; }
+      .actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+      .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; }
+      .kv b { font-weight: 600; }
+      a { color: var(--accent); }
+      .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+      .err { color: var(--bad); font-size: 12px; }
+      [hidden] { display: none !important; }
     </style>
   </head>
   <body>
-    <div class="box">
-      <p class="title">Buffet monitor: hello world</p>
-      <p class="muted">If you can read this inside Claude, the MCP App renders. Step 1 of CLAUDE.md §5 passes.</p>
-      <div class="row">
-        <span>Session:</span> <code id="session">waiting for tool result</code>
-      </div>
-      <div class="row">
-        <span>Server time:</span> <code id="time">-</code>
-        <button id="ping">Ping server</button>
-      </div>
-      <div class="row muted" id="host">host: unknown</div>
-    </div>
+    <div id="app" class="app"><div class="card muted">Connecting…</div></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

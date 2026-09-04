@@ -15,6 +15,7 @@ import { SessionError } from "./session.js";
  *   GET  /sessions/:id/events?after=N  events with seq > N
  *   GET  /sessions/:id/verify          re-hash the chain from genesis
  *   GET  /health
+ *   GET  /dashboard?session=<id>       the widget bundle in read-only HTTP mode (demo insurance)
  */
 export function createHttpApp(deps: Deps): Express {
   const app = express();
@@ -26,6 +27,11 @@ export function createHttpApp(deps: Deps): Express {
   if (process.env.MCP_CORS_ORIGIN) app.use("/mcp", cors({ origin: process.env.MCP_CORS_ORIGIN, exposedHeaders: ["Mcp-Session-Id"] }));
 
   app.get("/health", (_req, res) => res.json({ ok: true, name: "buffet", pool: deps.pool.counts() }));
+
+  // The fallback dashboard: the same widget bundle, in HTTP read-only mode (?session=<id>).
+  app.get("/dashboard", (_req, res) => {
+    res.type("html").sendFile(deps.widgetHtml);
+  });
 
   app.post("/mcp", async (req, res) => {
     const server = createServer(deps);
