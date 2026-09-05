@@ -1,11 +1,20 @@
 import { z } from "zod";
 import { isMoney, normalize, toCents } from "../money.js";
 
+/**
+ * A fresh money schema. Two fields of one tool's input schema must not share an
+ * instance: the JSON Schema generator emits the second as `{"$ref": "..."}`, and
+ * a tool schema published to a model is not a place for internal pointers
+ * (REVIEW-LOG phase 7). Use `money()` in tool inputs; `MoneySchema` elsewhere.
+ */
+export const money = () =>
+  z
+    .string()
+    .refine(isMoney, { message: "money must be a decimal string with <= 2 fractional digits" })
+    .transform(normalize);
+
 /** Accepts "12", "12.5", " 12.50 "; always outputs the canonical "12.50". */
-export const MoneySchema = z
-  .string()
-  .refine(isMoney, { message: "money must be a decimal string with <= 2 fractional digits" })
-  .transform(normalize);
+export const MoneySchema = money();
 
 /** Product object per CLAUDE.md §15.2. `description` is seller text: untrusted. */
 export const ProductSchema = z.object({
