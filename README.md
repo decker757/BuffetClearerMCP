@@ -1,3 +1,6 @@
+<img width="2048" height="768" alt="image" src="https://github.com/user-attachments/assets/1065810e-7fba-4134-8239-907035e6e70b" />
+
+
 # AIShop4U
 
 **The control plane that lets an AI agent spend at all: a spend-control layer with two ports — one to a merchant, one to a data provider — where every step the agent takes is visible, the purchase needs your approval, and the money it can move is capped at the total you approved and witnessed on-chain.**
