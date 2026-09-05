@@ -26,7 +26,7 @@ export function createHttpApp(deps: Deps): Express {
   // The MCP endpoint is not for browsers: no CORS unless an origin is configured (e.g. the ext-apps basic-host).
   if (process.env.MCP_CORS_ORIGIN) app.use("/mcp", cors({ origin: process.env.MCP_CORS_ORIGIN, exposedHeaders: ["Mcp-Session-Id"] }));
 
-  app.get("/health", (_req, res) => res.json({ ok: true, name: "buffet", pool: deps.pool.counts() }));
+  app.get("/health", (_req, res) => res.json({ ok: true, name: "aishop4u", pool: deps.pool.counts() }));
 
   // The fallback dashboard: the same widget bundle, in HTTP read-only mode (?session=<id>).
   app.get("/dashboard", (_req, res) => {

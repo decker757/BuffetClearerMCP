@@ -1,4 +1,4 @@
-import type { Product } from "@buffet/shared";
+import type { Product } from "@aishop4u/shared";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -84,7 +84,7 @@ describe("snapshot projection from the event log", () => {
 
 describe("event log across processes", () => {
   it("a second EventLog on the same directory sees another process's appends after reload()", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "buffet-log2-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aishop4u-log2-"));
     const writer = new EventLog(dir);
     const reader = new EventLog(dir);
     writer.append({ session_id: "s_x", span_id: "a", type: "session.started", source: "server", payload: { objective: "x" } });
@@ -102,7 +102,7 @@ describe("event log across processes", () => {
   });
 
   it("never splices a foreign chain onto its own", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "buffet-log3-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aishop4u-log3-"));
     const a = new EventLog(dir);
     a.append({ session_id: "s_y", span_id: "a", type: "session.started", source: "server", payload: {} });
     const b = new EventLog(); // in-memory, different genesis history for the same id

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { eq, lte, type Money } from "@buffet/shared";
+import { eq, lte, type Money } from "@aishop4u/shared";
 
 /**
  * The fiat leg (CLAUDE.md §15.4): authorise for the approved total, capture what

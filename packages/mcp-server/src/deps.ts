@@ -1,4 +1,4 @@
-import type { CardAuthoriser, Ledger, RegisteredShop, RlusdAsset, WalletPool } from "@buffet/payments";
+import type { CardAuthoriser, Ledger, RegisteredShop, RlusdAsset, WalletPool } from "@aishop4u/payments";
 import type { PaymentHeaderFactory } from "x402-xrpl";
 import type { SessionManager } from "./session.js";
 

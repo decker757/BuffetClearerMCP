@@ -12,7 +12,7 @@ import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { WalletPool } from "@buffet/payments";
+import { WalletPool } from "@aishop4u/payments";
 import { Client, Wallet, type TrustSet } from "xrpl";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

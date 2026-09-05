@@ -1,4 +1,4 @@
-import type { Candidate, Money, Quote, SessionEvent, SessionPhase, SessionSnapshot, SessionStep } from "@buffet/shared";
+import type { Candidate, Money, Quote, SessionEvent, SessionPhase, SessionSnapshot, SessionStep } from "@aishop4u/shared";
 
 /**
  * Rebuild a read-only snapshot from the event chain alone (CLAUDE.md §10: "the event

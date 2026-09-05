@@ -10,7 +10,7 @@ script) and `docs/REVIEW-LOG.md` (every mistake we made and the test that guards
 
 ## Where we are, in one paragraph
 
-**The whole product works end to end inside Claude Desktop.** A human said "Use Buffet:
+**The whole product works end to end inside Claude Desktop.** A human said "Use AIShop4U:
 I want to buy a laptop", gave a range, selected in the widget, entered billing in the
 widget, approved in the widget, and Claude settled a real 849 RLUSD purchase on XRPL
 testnet through x402: session wallet funded to the cent from the treasury, shop paid via
@@ -39,13 +39,13 @@ and the final feedback form.
 1. **Rehearse the main run** in Claude Desktop with range **300 to 1300** so the planted Dell XPS
    (349, rating 4.9, 3 sales) is in range and gets flagged and struck through. Our one successful
    human run used 750-1100 and had no flagged row; that row is the best moment we have.
-2. **Rehearse the contrast run**: "Use Buffet: I need a USB-C cable", range 5 to 30. Seconds.
+2. **Rehearse the contrast run**: "Use AIShop4U: I need a USB-C cable", range 5 to 30. Seconds.
 3. **Record the backup video** of both runs (§5 step 12). Live MCP plus live testnet on stage is two
    things that can fail.
 4. **Slides**: architecture diagram, the "who pays whom" table, the compliance line
    ("we are the merchant of record"), reserve numbers from
    `ripple/skills/xrpl-agentic-resources/resources/xrpl-fee-settings.json`.
-5. **Product name.** Still "Buffet" as a working title; `@buffet/*` package scope is a
+5. **Product name.** Still "AIShop4U" as a working title; `@aishop4u/*` package scope is a
    find-and-replace.
 6. **Final builder feedback Google form** (10% of the score). The hook has been posting all night;
    the form is the wrap-up: https://forms.gle/FZckiEAMU8oWXVbX7
@@ -73,12 +73,12 @@ and the final feedback form.
   instance never dies over the HTTP port, the reads project from the shared log, the pool file is
   locked per mutation. Do not "fix" it back.
 - **Claude may skip the tool** if web search is on or memory pulls in old notes. Web search off,
-  fresh chat, name the tool in the opening line: "Use Buffet: ...".
+  fresh chat, name the tool in the opening line: "Use AIShop4U: ...".
 - **Every test purchase drains the treasury** into the mock shops. Before a demo:
   `npm run sweep:shops`, `npm run provision -- repair`, `curl localhost:3001/health`.
 - Claude Desktop puts the widget's follow-up message **in the chat box**; the user presses Enter.
   That is by design now (no message after Select; one after billing; one after approve).
-- The shops server must be running (`npm run dev -w @buffet/shops`). The MCP server is launched by
+- The shops server must be running (`npm run dev -w @aishop4u/shops`). The MCP server is launched by
   Claude Desktop itself; do not also run `npm run dev:mcp` at the same time unless you want a
   second instance (it works, but it is confusing).
 
@@ -89,9 +89,9 @@ git clone --recurse-submodules https://github.com/decker757/BuffetClearerMCP.git
 npm install && npm run build && npm test
 # wallets: ask Ihsan for .wallets/ (testnet seeds, gitignored) or provision your own:
 #   npm run spike:xrpl && npm run fund:treasury -- 1500 && npm run provision -- shops && npm run provision -- pool 2
-npm run dev -w @buffet/shops          # terminal 1, keep running
+npm run dev -w @aishop4u/shops          # terminal 1, keep running
 # Claude Desktop: register packages/mcp-server/dist/main.js --stdio (README has the JSON), restart from tray
-# new chat, web search off: "Use Buffet: I want to buy a laptop"  → range 300 to 1300
+# new chat, web search off: "Use AIShop4U: I want to buy a laptop"  → range 300 to 1300
 ```
 
 Without Claude: `npm run dev:mcp` then `npx tsx scripts/mcp-smoke.ts "laptop" 300 1300` drives the

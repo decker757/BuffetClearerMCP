@@ -42,7 +42,7 @@ async function main(): Promise<void> {
         Account: e.address,
         Destination: to,
         Amount: { currency: RLUSD.currency, issuer: RLUSD.issuer, value: bal },
-        Memos: [{ Memo: { MemoType: convertStringToHex("buffet/ops"), MemoData: convertStringToHex("sweep-shops") } }],
+        Memos: [{ Memo: { MemoType: convertStringToHex("aishop4u/ops"), MemoData: convertStringToHex("sweep-shops") } }],
       };
       const res = await c.submitAndWait(tx, { autofill: true, wallet: Wallet.fromSeed(e.seed) });
       const m = res.result.meta;

@@ -1,4 +1,4 @@
-import { BrowseQuerySchema, ProductSchema, lte, toCents, type BrowseQuery, type BrowseResult, type Product } from "@buffet/shared";
+import { BrowseQuerySchema, ProductSchema, lte, toCents, type BrowseQuery, type BrowseResult, type Product } from "@aishop4u/shared";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

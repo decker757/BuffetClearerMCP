@@ -1,4 +1,4 @@
-import type { Candidate, SessionEvent, SessionStep } from "@buffet/shared";
+import type { Candidate, SessionEvent, SessionStep } from "@aishop4u/shared";
 import type { Snapshot, Transport } from "./transport.js";
 
 /**

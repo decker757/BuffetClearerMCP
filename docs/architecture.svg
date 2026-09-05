@@ -26,14 +26,14 @@
   </style>
 
   <rect width="1240" height="760" fill="#ffffff"/>
-  <text x="24" y="34" class="title" font-size="20">Buffet: supervised agent shopping on XRPL</text>
+  <text x="24" y="34" class="title" font-size="20">AIShop4U: supervised agent shopping on XRPL</text>
   <text x="24" y="54" class="muted">Fiat in via card, stablecoin out via XRPL, the server is the bridge. The model's only spending primitive is purchase(quote_id), and it only settles a quote the human approved.</text>
 
   <!-- Zones -->
   <rect x="24" y="80" width="250" height="600" class="zone"/>
   <text x="40" y="102" class="zoneTitle">CUSTOMER</text>
   <rect x="300" y="80" width="520" height="600" class="zone"/>
-  <text x="316" y="102" class="zoneTitle">BUFFET  (the product: MCP server + widget)</text>
+  <text x="316" y="102" class="zoneTitle">AISHOP4U  (the product: MCP server + widget)</text>
   <rect x="846" y="80" width="370" height="600" class="zone"/>
   <text x="862" y="102" class="zoneTitle">XRPL TESTNET  +  MERCHANT (mocked for the demo)</text>
 
@@ -59,7 +59,7 @@
   <text x="64" y="568" class="title">User's card</text>
   <text x="64" y="588" class="label">authorise total → capture spent</text>
 
-  <!-- Buffet column -->
+  <!-- AIShop4U column -->
   <rect x="324" y="126" width="220" height="150" class="box"/>
   <text x="340" y="150" class="title">Model-facing tools</text>
   <text x="340" y="172" class="label">start_session · browse</text>
@@ -95,7 +95,7 @@
 
   <!-- Right column -->
   <rect x="870" y="126" width="322" height="70" class="box"/>
-  <text x="886" y="150" class="title">Treasury wallet (Buffet's)</text>
+  <text x="886" y="150" class="title">Treasury wallet (AIShop4U's)</text>
   <text x="886" y="170" class="label">RLUSD + XRP reserve · topped up as a treasury op</text>
   <text x="886" y="186" class="muted">testnet: bought from the XRP/RLUSD AMM</text>
 

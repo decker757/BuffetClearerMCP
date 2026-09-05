@@ -1,4 +1,4 @@
-import { eq } from "@buffet/shared";
+import { eq } from "@aishop4u/shared";
 import type { PaymentRequirementsSelector } from "x402-xrpl";
 import { PolicyError, type Line, type RegisteredShop, type RlusdAsset } from "./types.js";
 

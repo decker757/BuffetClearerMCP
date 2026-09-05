@@ -1,5 +1,5 @@
 {
-  "name": "buffet-monorepo",
+  "name": "aishop4u-monorepo",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -15,12 +15,12 @@
     "typecheck": "tsc -b packages/shared packages/payments packages/mcp-server packages/shops scripts && tsc -p packages/widget",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev:widget": "npm run dev -w @buffet/widget",
-    "dev:mcp": "npm run dev -w @buffet/mcp-server",
+    "dev:widget": "npm run dev -w @aishop4u/widget",
+    "dev:mcp": "npm run dev -w @aishop4u/mcp-server",
     "spike:xrpl": "tsx scripts/xrpl-spike.ts",
     "fund:treasury": "tsx scripts/fund-treasury.ts",
     "provision": "tsx scripts/provision.ts",
-    "dev:shops": "npm run dev -w @buffet/shops",
+    "dev:shops": "npm run dev -w @aishop4u/shops",
     "x402:buy": "tsx scripts/x402-buy.ts",
     "settle:demo": "tsx scripts/settle-demo.ts",
     "sweep:shops": "tsx scripts/sweep-shops.ts"

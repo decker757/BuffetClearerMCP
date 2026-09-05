@@ -25,7 +25,7 @@ function post(url: string, body: unknown): Promise<Response> {
 }
 
 beforeAll(async () => {
-  outbox = fs.mkdtempSync(path.join(os.tmpdir(), "buffet-outbox-"));
+  outbox = fs.mkdtempSync(path.join(os.tmpdir(), "aishop4u-outbox-"));
   shops = createShopsApp({
     catalog: Catalog.fromFile(),
     payTo: PAY_TO,

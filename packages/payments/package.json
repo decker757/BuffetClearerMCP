@@ -1,5 +1,5 @@
 {
-  "name": "@buffet/payments",
+  "name": "@aishop4u/payments",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@buffet/shared": "*",
+    "@aishop4u/shared": "*",
     "x402-xrpl": "^0.3.2",
     "xrpl": "^4.6.0",
     "zod": "^3.25.0",

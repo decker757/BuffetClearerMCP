@@ -13,8 +13,8 @@ import {
   type SessionPhase,
   type SessionSnapshot,
   type SessionStep,
-} from "@buffet/shared";
-import type { EventSink } from "@buffet/payments";
+} from "@aishop4u/shared";
+import type { EventSink } from "@aishop4u/payments";
 import { randomBytes } from "node:crypto";
 import { EventLog } from "./eventlog.js";
 

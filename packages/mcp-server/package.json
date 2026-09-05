@@ -1,5 +1,5 @@
 {
-  "name": "@buffet/mcp-server",
+  "name": "@aishop4u/mcp-server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "start:stdio": "node dist/main.js --stdio"
   },
   "dependencies": {
-    "@buffet/payments": "*",
-    "@buffet/shared": "*",
+    "@aishop4u/payments": "*",
+    "@aishop4u/shared": "*",
     "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "cors": "^2.8.5",
@@ -25,6 +25,6 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@buffet/shops": "*"
+    "@aishop4u/shops": "*"
   }
 }

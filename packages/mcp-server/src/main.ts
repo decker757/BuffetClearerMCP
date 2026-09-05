@@ -1,4 +1,4 @@
-import { MockCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, type RegisteredShop } from "@buffet/payments";
+import { MockCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, type RegisteredShop } from "@aishop4u/payments";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import dotenv from "dotenv";
 import fs from "node:fs";
@@ -20,7 +20,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.
 dotenv.config({ path: path.join(ROOT, ".env"), quiet: true });
 
 const WIDGET_HTML = path.join(ROOT, "packages/widget/dist/index.html");
-if (!fs.existsSync(WIDGET_HTML)) throw new Error(`widget bundle missing at ${WIDGET_HTML}; run: npm run build -w @buffet/widget`);
+if (!fs.existsSync(WIDGET_HTML)) throw new Error(`widget bundle missing at ${WIDGET_HTML}; run: npm run build -w @aishop4u/widget`);
 
 function treasury(): { seed: string; address: string } {
   const seed = process.env.TREASURY_SEED || (JSON.parse(fs.readFileSync(path.join(ROOT, ".wallets/spike.json"), "utf8")) as { treasury: string }).treasury;
@@ -52,14 +52,14 @@ const port = Number.parseInt(process.env.MCP_PORT ?? "3001", 10);
 const stdio = process.argv.includes("--stdio");
 createHttpApp(deps)
   .listen(port, () => {
-    process.stderr.write(`buffet mcp-server: http://localhost:${port}/mcp  (pool ${JSON.stringify(deps.pool.counts())})\n`);
+    process.stderr.write(`aishop4u mcp-server: http://localhost:${port}/mcp  (pool ${JSON.stringify(deps.pool.counts())})\n`);
   })
   .on("error", (e: NodeJS.ErrnoException) => {
     // Claude Desktop launches several stdio instances (chat, plus its Cowork/Code pool). Only one
     // can own the port; the others must keep serving stdio. HTTP reads project from the shared
     // on-disk log, so whichever instance has the port can show every session.
     if (e.code === "EADDRINUSE") {
-      process.stderr.write(`buffet mcp-server: port ${port} in use; this instance serves ${stdio ? "stdio only" : "nothing"}. Reads are served by the instance that owns the port.\n`);
+      process.stderr.write(`aishop4u mcp-server: port ${port} in use; this instance serves ${stdio ? "stdio only" : "nothing"}. Reads are served by the instance that owns the port.\n`);
       if (!stdio) process.exit(1);
       return;
     }
@@ -70,12 +70,12 @@ createHttpApp(deps)
 const SESSION_MAX_AGE_MS = Number.parseInt(process.env.SESSION_MAX_AGE_MS ?? String(30 * 60_000), 10);
 setInterval(() => {
   const expired = deps.manager.expireStale(SESSION_MAX_AGE_MS);
-  if (expired.length > 0) process.stderr.write(`buffet mcp-server: expired ${expired.length} stale session(s)\n`);
+  if (expired.length > 0) process.stderr.write(`aishop4u mcp-server: expired ${expired.length} stale session(s)\n`);
 }, 60_000).unref();
 
 if (stdio) {
   const server = createServer(deps);
   await server.connect(new StdioServerTransport());
   // stdout is the protocol channel in stdio mode; log to stderr only.
-  process.stderr.write("buffet mcp-server: stdio transport connected\n");
+  process.stderr.write("aishop4u mcp-server: stdio transport connected\n");
 }

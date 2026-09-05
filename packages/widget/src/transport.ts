@@ -1,6 +1,6 @@
 import { App, applyDocumentTheme, type McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { SessionEvent, SessionSnapshot } from "@buffet/shared";
+import type { SessionEvent, SessionSnapshot } from "@aishop4u/shared";
 
 /**
  * Two ways to reach the server, one interface.
@@ -46,7 +46,7 @@ export class HostTransport implements Transport {
   onToolResult?: (structured: Record<string, unknown>) => void;
   onToolInput?: (tool: string | undefined, args: Record<string, unknown>) => void;
   onThemeChange?: (theme: string | undefined) => void;
-  private readonly app = new App({ name: "Buffet monitor", version: "0.1.0" });
+  private readonly app = new App({ name: "AIShop4U monitor", version: "0.1.0" });
 
   async connect(): Promise<void> {
     this.app.ontoolinput = (params) => {
@@ -57,7 +57,7 @@ export class HostTransport implements Transport {
       if (!result.isError) this.onToolResult?.((result.structuredContent ?? {}) as Record<string, unknown>);
     };
     this.app.onhostcontextchanged = (ctx: McpUiHostContext) => this.theme(ctx);
-    this.app.onerror = (e) => console.error("[buffet widget]", e);
+    this.app.onerror = (e) => console.error("[aishop4u widget]", e);
     await this.app.connect();
     const ctx = this.app.getHostContext();
     if (ctx) this.theme(ctx);
@@ -95,7 +95,7 @@ export class HostTransport implements Transport {
       const { isError } = await this.app.sendMessage({ role: "user", content: [{ type: "text", text }] }, { signal: AbortSignal.timeout(4000) });
       return !isError;
     } catch (e) {
-      console.info("[buffet widget] nudge not delivered:", e);
+      console.info("[aishop4u widget] nudge not delivered:", e);
       return false;
     }
   }

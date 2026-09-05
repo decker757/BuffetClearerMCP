@@ -1,4 +1,4 @@
-import { chainHash, type Quote } from "@buffet/shared";
+import { chainHash, type Quote } from "@aishop4u/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { MockCardAuthoriser } from "./card.js";
 import { WalletPool } from "./pool.js";

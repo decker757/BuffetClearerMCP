@@ -1,4 +1,4 @@
-import { GENESIS_HASH } from "@buffet/shared";
+import { GENESIS_HASH } from "@aishop4u/shared";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -43,7 +43,7 @@ describe("event log", () => {
   });
 
   it("persists as JSON lines and replays the chain on restart", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "buffet-log-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aishop4u-log-"));
     const log = new EventLog(dir);
     log.append({ session_id: "s_1", span_id: "x", type: "session.started", source: "server", payload: { when: new Date("2026-09-05T00:00:00Z") } });
     log.append({ session_id: "s_1", span_id: "x", type: "agent.intent", source: "agent", payload: {} });

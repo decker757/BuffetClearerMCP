@@ -1,5 +1,5 @@
 {
-  "name": "@buffet/scripts",
+  "name": "@aishop4u/scripts",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -7,8 +7,8 @@
     "spike:xrpl": "tsx xrpl-spike.ts"
   },
   "dependencies": {
-    "@buffet/payments": "*",
-    "@buffet/shared": "*",
+    "@aishop4u/payments": "*",
+    "@aishop4u/shared": "*",
     "dotenv": "^16.5.0",
     "x402-xrpl": "^0.3.2",
     "xrpl": "^4.6.0"

@@ -542,9 +542,9 @@ Quit from the tray, not just the window.
 "I want to buy a laptop", Claude Desktop answered from memory and the web and
 never called `start_session`. For the demo: turn **web search off** in the chat,
 use a **fresh chat** (memory pulled in old hardware notes), and **name the tool
-in the opening line**: "Use Buffet: I want to buy a laptop." Tool descriptions
+in the opening line**: "Use AIShop4U: I want to buy a laptop." Tool descriptions
 now say "use this first whenever the user wants to buy anything", but naming
-it is the guarantee. Click "Always allow" on each Buffet tool the first time.
+it is the guarantee. Click "Always allow" on each AIShop4U tool the first time.
 
 1. **The main run.** High-stakes purchase in VERTICAL. Say what you want. Agent
    asks for a budget; give a range. Show the 5 recommendations and the planted

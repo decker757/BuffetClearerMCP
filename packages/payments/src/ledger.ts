@@ -1,4 +1,4 @@
-import { eq, normalize, type Money } from "@buffet/shared";
+import { eq, normalize, type Money } from "@aishop4u/shared";
 import { Client, Wallet, convertStringToHex, type Payment } from "xrpl";
 import { createHash } from "node:crypto";
 import type { Ledger, PaymentCheck, RlusdAsset } from "./types.js";

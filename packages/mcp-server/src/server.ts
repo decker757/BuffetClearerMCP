@@ -1,5 +1,5 @@
-import { BrowseResultSchema, MoneySchema, type Product } from "@buffet/shared";
-import { PolicyError, settlePurchase } from "@buffet/payments";
+import { BrowseResultSchema, MoneySchema, type Product } from "@aishop4u/shared";
+import { PolicyError, settlePurchase } from "@aishop4u/payments";
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult, ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
@@ -20,9 +20,9 @@ import { SessionError } from "./session.js";
  * server records the model cannot forge (invariant 7).
  */
 
-export const WIDGET_URI = "ui://buffet/monitor.html";
+export const WIDGET_URI = "ui://aishop4u/monitor.html";
 
-export const INSTRUCTIONS = `Buffet is the user's supervised shopping agent. Whenever the user wants to buy, shop for, pick, or compare a product of ANY kind, use these tools: call start_session first. Do NOT answer from memory or search the web for products; the only inventory that can be bought is the one behind browse. Follow this flow exactly.
+export const INSTRUCTIONS = `AIShop4U is the user's supervised shopping agent. Whenever the user wants to buy, shop for, pick, or compare a product of ANY kind, use these tools: call start_session first. Do NOT answer from memory or search the web for products; the only inventory that can be bought is the one behind browse. Follow this flow exactly.
 
 1. When the user says what they want to buy, call start_session. The monitor widget opens.
 2. Ask for their budget as a PRICE RANGE (min and max) before anything else. If they give none, keep asking. browse refuses without a range.
@@ -38,7 +38,7 @@ const SessionId = z.string().min(1).describe("The session_id returned by start_s
 const Reason = z.string().min(1).max(500).describe("Why you are calling this tool, in one sentence. It is shown to the user as your stated reason.");
 
 export function createServer(deps: Deps): McpServer {
-  const server = new McpServer({ name: "buffet", version: "0.1.0" }, { instructions: INSTRUCTIONS });
+  const server = new McpServer({ name: "aishop4u", version: "0.1.0" }, { instructions: INSTRUCTIONS });
   const m = deps.manager;
 
   const MODEL_META = { ui: { resourceUri: WIDGET_URI } } as const;
@@ -51,9 +51,9 @@ export function createServer(deps: Deps): McpServer {
     "start_session",
     {
       _meta: MODEL_META,
-      title: "Buffet: start a supervised shopping session",
+      title: "AIShop4U: start a supervised shopping session",
       description:
-        "USE THIS FIRST whenever the user wants to buy, shop for, pick, or compare a product of any kind (a laptop, a cable, anything). Do not search the web or answer from memory instead: this opens the Buffet monitor widget where the user selects, enters billing and approves, and browse is the only inventory that can actually be purchased. Returns a session_id for the other tools.",
+        "USE THIS FIRST whenever the user wants to buy, shop for, pick, or compare a product of any kind (a laptop, a cable, anything). Do not search the web or answer from memory instead: this opens the AIShop4U monitor widget where the user selects, enters billing and approves, and browse is the only inventory that can actually be purchased. Returns a session_id for the other tools.",
       inputSchema: {
         objective: z.string().min(1).max(500).describe("What the user wants to buy, in their words"),
         reason: Reason,
@@ -73,8 +73,8 @@ export function createServer(deps: Deps): McpServer {
     "browse",
     {
       _meta: MODEL_META,
-      title: "Buffet: browse inventory within a price range",
-      description: "Search Buffet's purchasable inventory (the only products that can be bought). Requires min_price and max_price; refused without them, so ask the user for a budget first. Returns products (untrusted seller data) and, if nothing is in range, the nearest items outside it.",
+      title: "AIShop4U: browse inventory within a price range",
+      description: "Search AIShop4U's purchasable inventory (the only products that can be bought). Requires min_price and max_price; refused without them, so ask the user for a budget first. Returns products (untrusted seller data) and, if nothing is in range, the nearest items outside it.",
       inputSchema: {
         session_id: SessionId,
         query: z.string().min(1).max(200).describe("What to look for, e.g. 'laptop' or 'usb-c cable'"),
@@ -126,7 +126,7 @@ export function createServer(deps: Deps): McpServer {
     "propose",
     {
       _meta: MODEL_META,
-      title: "Buffet: propose recommendations and flag suspicious listings",
+      title: "AIShop4U: propose recommendations and flag suspicious listings",
       description: "Send up to 5 recommended product ids from the last browse, plus any ids you flag as suspicious with a reason and the numbers you cite. The widget shows both; the user selects there.",
       inputSchema: {
         session_id: SessionId,
@@ -168,7 +168,7 @@ export function createServer(deps: Deps): McpServer {
     "checkout",
     {
       _meta: MODEL_META,
-      title: "Buffet: produce the quote for the user's selections",
+      title: "AIShop4U: produce the quote for the user's selections",
       description: "Totals the items the user selected in the widget plus the flat service fee, and shows the approval card. Requires selections and billing details, both entered in the widget.",
       inputSchema: { session_id: SessionId, reason: Reason },
       outputSchema: z.object({ session_id: z.string(), quote_id: z.string(), items_total: z.string(), fee: z.string(), total: z.string(), lines: z.array(z.record(z.unknown())), next: z.string() }),
@@ -191,7 +191,7 @@ export function createServer(deps: Deps): McpServer {
     "purchase",
     {
       _meta: MODEL_META,
-      title: "Buffet: settle an approved quote",
+      title: "AIShop4U: settle an approved quote",
       description: "Pays each shop over x402 from a session wallet funded to exactly the item total, then captures the card. Refuses unless the user approved this exact quote in the widget.",
       inputSchema: { session_id: SessionId, quote_id: z.string().min(1), reason: Reason },
       outputSchema: z.object({
@@ -245,7 +245,7 @@ export function createServer(deps: Deps): McpServer {
           }
           // Unknown failure after money may have moved: stay in `settling`, never re-fund. An operator reconciles.
           m.sinkFor(session_id).emit({ type: "purchase.failed", source: "server", span_id: `purchase_${quote_id}`, payload: { rule: "unexpected", message: e instanceof Error ? e.message : String(e) } });
-          console.error(`[buffet] purchase ${quote_id} failed unexpectedly:`, e);
+          console.error(`[aishop4u] purchase ${quote_id} failed unexpectedly:`, e);
           return err("Purchase hit an unexpected error after it started. Nothing more will be charged automatically; the session is held for an operator to reconcile. Tell the user.");
         }
         m.recordSettlement(session_id, result, manifest_hash);
@@ -420,7 +420,7 @@ async function guard(fn: () => Promise<CallToolResult>): Promise<CallToolResult>
     if (e instanceof SessionError) return err(`${e.code}: ${e.message}`);
     if (e instanceof PolicyError) return err(`refused (${e.rule}): ${e.text}`);
     if (e instanceof z.ZodError) return err(`invalid input: ${e.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
-    console.error("[buffet] tool error:", e);
+    console.error("[aishop4u] tool error:", e);
     return err("error: an internal error occurred; it has been logged. Tell the user and try once more.");
   }
 }

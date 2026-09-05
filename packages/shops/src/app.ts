@@ -1,4 +1,4 @@
-import { BrowseQuerySchema } from "@buffet/shared";
+import { BrowseQuerySchema } from "@aishop4u/shared";
 import express, { type Express, type NextFunction, type Request, type RequestHandler, type Response } from "express";
 import { randomBytes } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";

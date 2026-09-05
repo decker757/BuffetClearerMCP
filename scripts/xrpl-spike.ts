@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 
     const memo = {
       Memo: {
-        MemoType: convertStringToHex("buffet/spike"),
+        MemoType: convertStringToHex("aishop4u/spike"),
         MemoData: convertStringToHex(JSON.stringify({ session_id: "s_spike", action: "purchase.settled" })),
       },
     };

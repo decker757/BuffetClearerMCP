@@ -5,7 +5,7 @@
  *   npx tsx scripts/x402-buy.ts [shop_id=shop_a] [product_id=p_a08]
  *
  * Prints the 402 terms, the settlement tx hash, the order, and the invoice outbox file.
- * Requires: shops server running (npm run dev -w @buffet/shops), treasury with RLUSD.
+ * Requires: shops server running (npm run dev -w @aishop4u/shops), treasury with RLUSD.
  */
 import dotenv from "dotenv";
 import fs from "node:fs";

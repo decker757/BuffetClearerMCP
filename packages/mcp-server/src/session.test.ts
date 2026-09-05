@@ -1,4 +1,4 @@
-import type { Product } from "@buffet/shared";
+import type { Product } from "@aishop4u/shared";
 import { describe, expect, it } from "vitest";
 import { EventLog } from "./eventlog.js";
 import { SessionError, SessionManager } from "./session.js";

@@ -1,4 +1,4 @@
-import { GENESIS_HASH, SessionEventSchema, chainHash, type NewEvent, type SessionEvent } from "@buffet/shared";
+import { GENESIS_HASH, SessionEventSchema, chainHash, type NewEvent, type SessionEvent } from "@aishop4u/shared";
 import fs from "node:fs";
 import path from "node:path";
 

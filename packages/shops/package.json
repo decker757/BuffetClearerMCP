@@ -1,5 +1,5 @@
 {
-  "name": "@buffet/shops",
+  "name": "@aishop4u/shops",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
-    "@buffet/shared": "*",
+    "@aishop4u/shared": "*",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "x402-xrpl": "^0.3.2",

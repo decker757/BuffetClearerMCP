@@ -1,4 +1,4 @@
-import type { EventSource, EventType, Money, OrderLine } from "@buffet/shared";
+import type { EventSource, EventType, Money, OrderLine } from "@aishop4u/shared";
 
 /**
  * The payments layer never owns the event log; it reports through this sink so the

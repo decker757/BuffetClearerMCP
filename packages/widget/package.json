@@ -1,5 +1,5 @@
 {
-  "name": "@buffet/widget",
+  "name": "@aishop4u/widget",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@buffet/shared": "*"
+    "@aishop4u/shared": "*"
   },
   "devDependencies": {
     "vite": "^7.0.0",

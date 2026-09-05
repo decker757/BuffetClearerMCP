@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@buffet/shared";
+import type { SessionEvent } from "@aishop4u/shared";
 import { render, type Actions, type UiState } from "./render.js";
 import { HostTransport, HttpTransport, type Transport } from "./transport.js";
 
@@ -38,7 +38,7 @@ async function boot(): Promise<void> {
     try {
       render(root, st, actions);
     } catch (e) {
-      console.error("[buffet widget] render failed:", e);
+      console.error("[aishop4u widget] render failed:", e);
       root.replaceChildren(Object.assign(document.createElement("div"), { className: "card err", textContent: `render failed: ${e instanceof Error ? e.message : String(e)}` }));
     }
   };

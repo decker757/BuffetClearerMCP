@@ -1,10 +1,10 @@
-# Buffet
+# AIShop4U
 
 **The control plane that lets an AI agent spend at all: a spend-control layer with two ports — one to a merchant, one to a data provider — where every step the agent takes is visible, the purchase needs your approval, and the money it can move is capped at the total you approved and witnessed on-chain.**
 
-Every network shipped an agent-payment spec this year. Almost none of them answers the two questions that decide whether you'd actually let an agent loose with money: what stops it overspending, and who can verify what it did afterwards. Buffet is that layer. Shopping for a laptop is one instantiation; the market is anywhere delegated spend needs a hard cap and an audit trail — small-business procurement first, where finance teams block agent spend today precisely because there is neither.
+Every network shipped an agent-payment spec this year. Almost none of them answers the two questions that decide whether you'd actually let an agent loose with money: what stops it overspending, and who can verify what it did afterwards. AIShop4U is that layer. Shopping for a laptop is one instantiation; the market is anywhere delegated spend needs a hard cap and an audit trail — small-business procurement first, where finance teams block agent spend today precisely because there is neither.
 
-Built for the Ripple challenge at Singhacks 2026: an AI-native business on XRPL with x402 agentic payments. Claude is the agent. Buffet is the MCP server and the inline widget between the agent and the money.
+Built for the Ripple challenge at Singhacks 2026: an AI-native business on XRPL with x402 agentic payments. Claude is the agent. AIShop4U is the MCP server and the inline widget between the agent and the money.
 
 > Product name is a working title. Team: BuffetClearers.
 
@@ -16,17 +16,17 @@ Shopping asks you to do the boring work and then make the important decision at 
 
 An agent could do the lookup in ninety seconds. Nobody lets one *buy*, because that means handing your card to software that makes decisions you never see, for reasons it will not show you.
 
-Buffet moves the line. The agent takes the lookup. The human keeps intent at the start and judgment at the end. And the reason you can hand over the boring part is that you can see it was done properly.
+AIShop4U moves the line. The agent takes the lookup. The human keeps intent at the start and judgment at the end. And the reason you can hand over the boring part is that you can see it was done properly.
 
 ## What happens in a session
 
-1. You tell Claude what you want. Claude calls `start_session`; the Buffet monitor opens inline in the chat.
+1. You tell Claude what you want. Claude calls `start_session`; the AIShop4U monitor opens inline in the chat.
 2. Claude asks for a **price range**. It cannot browse without one: the inventory endpoint refuses, below the model.
-3. Claude browses Buffet's inventory (the only products that can be bought), picks up to five, and **flags anything suspicious** with the numbers it is citing. Flagged rows are struck through in the widget and labelled as the agent's claim, never hidden.
+3. Claude browses AIShop4U's inventory (the only products that can be bought), picks up to five, and **flags anything suspicious** with the numbers it is citing. Flagged rows are struck through in the widget and labelled as the agent's claim, never hidden.
 4. **You select in the widget.** Not in chat. The selection is a server record the model cannot forge.
 5. **You enter billing in the widget.** It never enters the model's context; the server holds it for the session and deletes it after the invoice is sent.
 6. Claude calls `checkout`. The approval card shows items, the flat fee, and the total. **You approve in the widget.** The approval is single-use, bound to the quote hash, and expires in five minutes.
-7. Claude calls `purchase`. The server authorises your card for the total, draws a session wallet from a pre-provisioned pool, funds it from Buffet's treasury with **exactly the item total in RLUSD**, pays each shop over **x402**, and captures the card for what the ledger says left the wallet. The last payment carries the session's manifest hash in its memo.
+7. Claude calls `purchase`. The server authorises your card for the total, draws a session wallet from a pre-provisioned pool, funds it from AIShop4U's treasury with **exactly the item total in RLUSD**, pays each shop over **x402**, and captures the card for what the ledger says left the wallet. The last payment carries the session's manifest hash in its memo.
 8. The receipt shows what settled, the explorer links, what was charged, and the manifest. Nothing is kept: no balance, no wallet of yours, no stored value.
 
 Two runs on the same server show it is not hardcoded to one category: a laptop, then a USB-C cable.
@@ -39,15 +39,15 @@ The session wallet is our answer to "why not just give the agent a card with a l
 
 ## Architecture
 
-![Buffet architecture](docs/architecture.svg)
+![AIShop4U architecture](docs/architecture.svg)
 
 <details>
 <summary>Text version</summary>
 
 ```
-User's card ──authorise / capture (mocked; Stripe test mode is the next step)──▶ Buffet   [fiat leg]
+User's card ──authorise / capture (mocked; Stripe test mode is the next step)──▶ AIShop4U   [fiat leg]
                                                                                   │
-Claude (chat) ── MCP ──▶ Buffet MCP server                                        │ "card ok → fund session"
+Claude (chat) ── MCP ──▶ AIShop4U MCP server                                        │ "card ok → fund session"
                           │                                                       ▼
                           ├── model-facing tools                   treasury wallet (RLUSD + XRP)
                           │     start_session, browse,                        │
@@ -74,12 +74,12 @@ Claude (chat) ── MCP ──▶ Buffet MCP server                            
 
 </details>
 
-**Two rails, one bridge.** The card never touches the ledger. The treasury holds RLUSD; on testnet it is bought from the XRP/RLUSD AMM. The only link between the legs is server code: card authorised, therefore fund the session; lines settled, therefore capture. Buffet is the merchant of record: you pay in fiat for a service with a price cap, and the on-chain spend is our treasury paying our suppliers. You never hold stablecoin and we never hold a balance for you.
+**Two rails, one bridge.** The card never touches the ledger. The treasury holds RLUSD; on testnet it is bought from the XRP/RLUSD AMM. The only link between the legs is server code: card authorised, therefore fund the session; lines settled, therefore capture. AIShop4U is the merchant of record: you pay in fiat for a service with a price cap, and the on-chain spend is our treasury paying our suppliers. You never hold stablecoin and we never hold a balance for you.
 
 ### The x402 flow
 
 - The shop's order endpoint is gated by `requireX402` from the `x402-xrpl` SDK (one middleware instance per product, since the SDK fixes the price per instance). A request without payment gets a **402** with `PAYMENT-REQUIRED`: scheme `exact`, network `xrpl:1`, asset RLUSD (40-hex code) with issuer, `payTo`, amount, and an invoice id.
-- Buffet's client fetches the 402 first so the terms become an event, then pays through `x402Purchase` with **our policy as the requirement selector**: the demanded amount must equal the approved line, `payTo` must be the registered shop address, the issuer must be the RLUSD issuer, amounts must be canonical. A mismatch is refused before anything is signed and logged as `payment.refused`.
+- AIShop4U's client fetches the 402 first so the terms become an event, then pays through `x402Purchase` with **our policy as the requirement selector**: the demanded amount must equal the approved line, `payTo` must be the registered shop address, the issuer must be the RLUSD issuer, amounts must be canonical. A mismatch is refused before anything is signed and logged as `payment.refused`.
 - The signed Payment carries the invoice id, which is `<quote_id>:<line_id>:<manifest_hash>`, in the Memo and `InvoiceID` field. The hosted t54 facilitator verifies and settles; the shop then creates the order and emails the invoice. The facilitator consumes the invoice once, and the shop is idempotent on the same reference, so a retry never pays twice.
 - Anything uncertain after a payment header was sent is resolved by asking the shop for the order by reference and **verifying the transaction on-ledger** (payer, destination, exact amount, invoice binding) before the card is captured. The card is captured on what the ledger says left the wallet, never on what a response body claimed.
 
@@ -148,7 +148,7 @@ npm test                        # 90 tests: money math, hash chain, shops, polic
 Run the mock merchant, then register the MCP server in Claude Desktop:
 
 ```bash
-npm run dev -w @buffet/shops    # http://localhost:4002
+npm run dev -w @aishop4u/shops    # http://localhost:4002
 ```
 
 `%APPDATA%\Claude\claude_desktop_config.json`:
@@ -156,7 +156,7 @@ npm run dev -w @buffet/shops    # http://localhost:4002
 ```json
 {
   "mcpServers": {
-    "buffet": {
+    "aishop4u": {
       "command": "node",
       "args": ["<absolute path>/packages/mcp-server/dist/main.js", "--stdio"]
     }
@@ -164,7 +164,7 @@ npm run dev -w @buffet/shops    # http://localhost:4002
 }
 ```
 
-Quit Claude Desktop from the tray and reopen. In a new chat with web search off: **"Use Buffet: I want to buy a laptop."** Give a range like 300 to 1300 so the planted too-good-to-be-true listing is in range.
+Quit Claude Desktop from the tray and reopen. In a new chat with web search off: **"Use AIShop4U: I want to buy a laptop."** Give a range like 300 to 1300 so the planted too-good-to-be-true listing is in range.
 
 Without Claude, the whole loop can be driven by script against the real shops and testnet:
 

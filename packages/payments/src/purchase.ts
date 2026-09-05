@@ -1,4 +1,4 @@
-import { add, eq, lt, sub, toCents, type Money, type Quote } from "@buffet/shared";
+import { add, eq, lt, sub, toCents, type Money, type Quote } from "@aishop4u/shared";
 import type { PaymentHeaderFactory } from "x402-xrpl";
 import type { CardAuthoriser } from "./card.js";
 import type { WalletPool } from "./pool.js";
@@ -129,7 +129,7 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
         fromSeed: input.treasury.seed,
         to: wallet.address,
         value: toFund,
-        memo: { type: "buffet/fund", data: JSON.stringify({ session_id, quote_id: quote.quote_id }) },
+        memo: { type: "aishop4u/fund", data: JSON.stringify({ session_id, quote_id: quote.quote_id }) },
       });
       funded = toFund;
     } catch (e) {
@@ -213,7 +213,7 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
         fromSeed: wallet.seed,
         to: input.treasury.address,
         value: remaining,
-        memo: { type: "buffet/manifest", data: JSON.stringify({ session_id, quote_id: quote.quote_id, manifest: input.manifest_hash }) },
+        memo: { type: "aishop4u/manifest", data: JSON.stringify({ session_id, quote_id: quote.quote_id, manifest: input.manifest_hash }) },
       });
       released = remaining;
       sink.emit({

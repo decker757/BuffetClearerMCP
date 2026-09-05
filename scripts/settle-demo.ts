@@ -5,11 +5,11 @@
  *
  *   npx tsx scripts/settle-demo.ts [product_id=p_a08]
  *
- * Requires: shops server running (npm run dev -w @buffet/shops), a provisioned pool
+ * Requires: shops server running (npm run dev -w @aishop4u/shops), a provisioned pool
  * (npm run provision -- pool 2), treasury with RLUSD (npm run fund:treasury).
  */
-import { chainHash, type Quote } from "@buffet/shared";
-import { MockCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, settlePurchase, type EventSink } from "@buffet/payments";
+import { chainHash, type Quote } from "@aishop4u/shared";
+import { MockCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, settlePurchase, type EventSink } from "@aishop4u/payments";
 import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";

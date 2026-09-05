@@ -86,7 +86,7 @@ describe("wallet pool", () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "buffet-pool2-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aishop4u-pool2-"));
     const file = path.join(dir, "pool.json");
     fs.writeFileSync(file, JSON.stringify(entries()));
     const a = WalletPool.fromFile(file); // process A
@@ -114,7 +114,7 @@ describe("wallet pool", () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "buffet-pool-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aishop4u-pool-"));
     const file = path.join(dir, "pool.json");
     fs.writeFileSync(file, JSON.stringify(entries()));
     const pool = WalletPool.fromFile(file);

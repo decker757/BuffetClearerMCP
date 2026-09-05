@@ -4,7 +4,7 @@
  *
  *   npx tsx scripts/mcp-smoke.ts [query=usb-c cable] [min=5] [max=30]
  *
- * Requires: shops server (npm run dev -w @buffet/shops) and the MCP server
+ * Requires: shops server (npm run dev -w @aishop4u/shops) and the MCP server
  * (npm run dev:mcp) running, pool provisioned, treasury funded.
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -25,7 +25,7 @@ const [query = "usb-c cable", min = "5", max = "30"] = process.argv.slice(2);
 // HTTP instance keeps the port; the reads at the end must still show this session (log projection).
 const useStdio = process.env.MCP_TRANSPORT === "stdio";
 
-const client = new Client({ name: "buffet-driver", version: "0.1.0" });
+const client = new Client({ name: "aishop4u-driver", version: "0.1.0" });
 if (useStdio) {
   const main = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../packages/mcp-server/dist/main.js");
   await client.connect(new StdioClientTransport({ command: process.execPath, args: [main, "--stdio"], stderr: "inherit" }));

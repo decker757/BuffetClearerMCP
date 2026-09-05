@@ -143,7 +143,7 @@ This supersedes the ordering in `docs/STATUS.md` for the remaining time.
 | 4 | Slides, with the reframe in §3.1 | architecture diagram, who-pays-whom table, compliance line, live reserve numbers |
 | 5 | Final builder feedback Google form | 10% of the score — https://forms.gle/FZckiEAMU8oWXVbX7 |
 | 6 | OpenWallet: the 30-minute evaluation in §6 was never done | a Ripple judge **will** ask. Either try it or write the reasoning for the production-path slide |
-| 7 | Product name | still "Buffet" as a working title; `@buffet/*` is a find-and-replace |
+| 7 | Product name | still "AIShop4U" as a working title; `@aishop4u/*` is a find-and-replace |
 
 **— CUT LINE. Only cross it if 1–7 are actually done. —**
 

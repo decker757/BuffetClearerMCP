@@ -1,6 +1,6 @@
-import { MockCardAuthoriser, WalletPool } from "@buffet/payments";
-import { FakeLedger, POOL, RLUSD, SHOP_A, SHOP_B, TREASURY, fakeHeaderFactory, startFakeShop } from "@buffet/payments/testkit";
-import { Catalog } from "@buffet/shops";
+import { MockCardAuthoriser, WalletPool } from "@aishop4u/payments";
+import { FakeLedger, POOL, RLUSD, SHOP_A, SHOP_B, TREASURY, fakeHeaderFactory, startFakeShop } from "@aishop4u/payments/testkit";
+import { Catalog } from "@aishop4u/shops";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import fs from "node:fs";
@@ -33,7 +33,7 @@ async function harness(opts: { override?: Parameters<typeof startFakeShop>[0]["o
   const prices = Object.fromEntries(catalog.all().map((p) => [p.id, p.price]));
   const shop = await startFakeShop({ ledger, payerAddress: POOL.address, prices, browse: (q) => catalog.browse(q), ...(opts.override ? { override: opts.override } : {}) });
   closers.push(shop.close);
-  const widgetHtml = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "buffet-w-")), "index.html");
+  const widgetHtml = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "aishop4u-w-")), "index.html");
   fs.writeFileSync(widgetHtml, "<html>widget</html>");
   const manager = new SessionManager(new EventLog(), "0.25");
   const deps: Deps = {
@@ -73,7 +73,7 @@ describe("tool surface", () => {
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     for (const n of ["start_session", "browse", "propose", "checkout", "purchase"]) {
       const meta = byName[n]!._meta as { ui?: { resourceUri?: string; visibility?: string[] } };
-      expect(meta.ui?.resourceUri).toBe("ui://buffet/monitor.html");
+      expect(meta.ui?.resourceUri).toBe("ui://aishop4u/monitor.html");
       expect(meta.ui?.visibility).toBeUndefined();
     }
     for (const n of ["session_snapshot", "session_events", "select_candidate", "submit_billing", "approve_quote", "abort_session"]) {

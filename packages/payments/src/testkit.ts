@@ -1,4 +1,4 @@
-import { BrowseQuerySchema, add, sub, toCents, type BrowseQuery, type BrowseResult, type Money, type SessionEvent } from "@buffet/shared";
+import { BrowseQuerySchema, add, sub, toCents, type BrowseQuery, type BrowseResult, type Money, type SessionEvent } from "@aishop4u/shared";
 import express from "express";
 import type { Server } from "node:http";
 import { base64EncodeUtf8, encodePaymentRequiredHeader, jsonCanonicalStringify } from "x402-xrpl";

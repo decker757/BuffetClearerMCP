@@ -41,5 +41,5 @@ const { app } = createShopsApp({
 
 const port = Number.parseInt(process.env.SHOPS_PORT ?? "4002", 10);
 app.listen(port, () => {
-  console.log(`buffet shops: http://localhost:${port}  (${catalog.shops.length} shops, ${catalog.all().length} products, ${network})`);
+  console.log(`aishop4u shops: http://localhost:${port}  (${catalog.shops.length} shops, ${catalog.all().length} products, ${network})`);
 });
