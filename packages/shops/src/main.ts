@@ -36,6 +36,7 @@ const { app } = createShopsApp({
   network,
   facilitatorUrl: process.env.X402_FACILITATOR_URL ?? "https://xrpl-facilitator-testnet.t54.ai",
   outboxDir: path.join(ROOT, ".outbox"),
+  email: { apiKey: process.env.RESEND_API_KEY, from: process.env.INVOICE_FROM },
 });
 
 const port = Number.parseInt(process.env.SHOPS_PORT ?? "4002", 10);

@@ -65,7 +65,7 @@ async function main(): Promise<void> {
       session_id: "s_demo",
       quote,
       manifest_hash,
-      delivery: { name: "Demo Buyer", email: "demo.buyer@example.com", address: "1 Marina Bay, Singapore" },
+      delivery: { name: "Demo Buyer", email: process.env.DEMO_BILLING_EMAIL ?? "demo.buyer@example.com", address: "1 Marina Bay, Singapore" },
       shops,
       shopsUrl: SHOPS,
       treasury: treasury(),

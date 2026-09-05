@@ -9,7 +9,7 @@ import { z } from "zod";
 import { requireX402, type InvoiceStore } from "x402-xrpl/express";
 import type { PaymentRequirements } from "x402-xrpl";
 import type { Catalog } from "./catalog.js";
-import { InvoiceMailer, type Invoice } from "./email.js";
+import { InvoiceMailer, type Invoice, type MailerOptions } from "./email.js";
 
 /**
  * The mock merchant (CLAUDE.md §15.2, §15.3). Two shops, one process, one gateway.
@@ -42,6 +42,8 @@ export interface ShopsConfig {
   sourceTag?: number;
   /** Seconds a 402 quote (and its stock hold) stays valid. Default 600. */
   invoiceTtlSeconds?: number;
+  /** Invoice email delivery. Absent (or no apiKey) → invoices are written to the outbox only. */
+  email?: MailerOptions;
 }
 
 const INVOICE_REF_RE = /^[A-Za-z0-9:_-]{8,200}$/;
@@ -119,7 +121,7 @@ export interface ShopsApp {
 export function createShopsApp(cfg: ShopsConfig): ShopsApp {
   const app = express();
   app.use(express.json({ limit: "64kb" }));
-  const mailer = new InvoiceMailer(cfg.outboxDir);
+  const mailer = new InvoiceMailer(cfg.outboxDir, cfg.email);
   const events = new EventEmitter();
   const ttl = cfg.invoiceTtlSeconds ?? 600;
   const persistFile = path.join(cfg.outboxDir, "orders.json");

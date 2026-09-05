@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   const body = JSON.stringify({
     // Fixed ref per product so a rerun demonstrates idempotency; pass a 4th arg to force a fresh order.
     invoice_ref: process.argv[4] ?? `q_demo:${productId}:${"ab".repeat(16)}`,
-    delivery: { name: "Demo Buyer", email: "demo.buyer@example.com", address: "1 Marina Bay, Singapore" },
+    delivery: { name: "Demo Buyer", email: process.env.DEMO_BILLING_EMAIL ?? "demo.buyer@example.com", address: "1 Marina Bay, Singapore" },
   });
   const headers = { "content-type": "application/json" };
 

@@ -10,10 +10,16 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+dotenv.config({ path: path.join(ROOT, ".env"), quiet: true });
+
 const MCP = process.env.MCP_URL ?? "http://localhost:3001";
+// Set DEMO_BILLING_EMAIL in .env to route the invoice to a real inbox (with Resend configured).
+const BILLING_EMAIL = process.env.DEMO_BILLING_EMAIL ?? "demo.buyer@example.com";
 const [query = "usb-c cable", min = "5", max = "30"] = process.argv.slice(2);
 // MCP_TRANSPORT=stdio spawns a second server instance the way Claude Desktop does, while the
 // HTTP instance keeps the port; the reads at the end must still show this session (log projection).
@@ -66,7 +72,7 @@ await call("propose", {
 // Widget actions
 const pick = recommended[0]!;
 await call("select_candidate", { session_id: sid, product_id: pick.id });
-await call("submit_billing", { session_id: sid, name: "Demo Buyer", email: "demo.buyer@example.com", address: "1 Marina Bay, Singapore" });
+await call("submit_billing", { session_id: sid, name: "Demo Buyer", email: BILLING_EMAIL, address: "1 Marina Bay, Singapore" });
 const checkout = await call("checkout", { session_id: sid, reason: "driver: selection and billing are in" });
 const quote_id = checkout.quote_id as string;
 
