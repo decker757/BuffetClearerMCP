@@ -106,6 +106,21 @@ export function projectSnapshot(events: SessionEvent[]): SessionSnapshot | undef
       case "approval.refused":
         if (str(p, "rule") === "approval_expired") phase = "checkout";
         break;
+      /**
+       * A settlement-level refusal (treasury underfunded, pool exhausted, card
+       * declined) means nothing moved and the live manager sends the session back
+       * to checkout. Without this the dashboard would sit on "approved / waiting
+       * for the agent to settle" forever, with no approve button, while the widget
+       * showed the truth. Per-line refusals during settling carry a `line_id`;
+       * these do not, which is the discriminator.
+       */
+      case "payment.refused":
+        if (p.line_id === undefined && (phase === "approved" || phase === "settling")) {
+          phase = "checkout";
+          step = "approve";
+          in_flight = "0.00";
+        }
+        break;
       case "card.authorised":
         phase = "settling";
         step = "settle";

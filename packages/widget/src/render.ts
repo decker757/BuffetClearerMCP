@@ -73,6 +73,10 @@ function link(href: string, text: string): HTMLElement {
 function money(m: string | undefined): string {
   return m === undefined ? "–" : `${m} RLUSD`;
 }
+/** The card leg is fiat (CLAUDE.md §3, two rails): never label it RLUSD. */
+function usd(m: string | undefined): string {
+  return m === undefined ? "–" : `${m} USD`;
+}
 function short(hash: string): string {
   return `${hash.slice(0, 8)}…${hash.slice(-4)}`;
 }
@@ -283,7 +287,8 @@ function receipt(s: Snapshot, events: SessionEvent[]): HTMLElement | undefined {
   const anchored = events.find((e) => e.type === "manifest.anchored")?.payload as { manifest_hash?: string; explorer?: string | null; via?: string } | undefined;
   const settled = events.filter((e) => e.type === "purchase.settled");
   const failed = events.filter((e) => e.type === "purchase.failed" || e.type === "payment.refused");
-  const { root, body } = card("Receipt", "card captured");
+  // Not every completed session captured something: a fully failed run releases the hold.
+  const { root, body } = card("Receipt", captured ? "card captured" : "nothing settled");
   const kv = el("div", "kv");
   const row = (k: string, v: string | HTMLElement) => {
     kv.append(el("b", undefined, k));
@@ -293,8 +298,8 @@ function receipt(s: Snapshot, events: SessionEvent[]): HTMLElement | undefined {
   };
   row("Items settled", money(captured?.items ?? s.ledger.settled));
   row("Service fee", money(captured?.fee ?? s.ledger.fee));
-  row("Charged to card", money(captured?.amount));
-  if (released?.amount && Number(released.amount) > 0) row("Released on card", money(released.amount));
+  row("Charged to card", usd(captured?.amount));
+  if (released?.amount && Number(released.amount) > 0) row("Released on card", usd(released.amount));
   for (const e of settled) {
     const p = e.payload as { order_id?: string; product_id?: string; explorer?: string; tx_hash?: string; invoice_sent_to?: string | null; amount?: string };
     const d = el("div");
