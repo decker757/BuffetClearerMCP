@@ -288,6 +288,12 @@ the time.
   URLs / invented ones; the result text hands the model a ready-made
   `[View on XRPL](…)` to copy. Still model-authored, so the widget remains the
   guarantee — but far more consistent.
+  - Follow-up (same day): step 9 also requires a one-sentence explanation of what
+    the link is (public, tamper-proof XRPL record; verify amount, shop, manifest;
+    neither we nor the shop can alter it), and the result text carries a ready-made
+    "TELL THE USER" proof line to relay. A true hard guarantee on free-text isn't
+    possible from the server (a prompt is not a guardrail); we deliberately stopped
+    at prompt + result text and did NOT add an eval guardrail for it.
 
 | What changed | Why | Guarded by |
 |---|---|---|
