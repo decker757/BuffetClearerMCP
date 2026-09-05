@@ -12,6 +12,8 @@ import type { SessionEvent, SessionSnapshot } from "@aishop4u/shared";
  */
 export interface Snapshot extends SessionSnapshot {
   pool?: Record<string, number>;
+  /** The card on file, from the server: no card is ever entered, so this is always a test card. */
+  card?: { brand: string; last4: string; test: boolean };
 }
 
 export interface Transport {

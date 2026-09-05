@@ -25,11 +25,12 @@
       .muted { color: var(--muted); }
       .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
       /* phase strip */
-      .strip { display: flex; gap: 4px; flex-wrap: wrap; }
-      .strip span { padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
-      .strip span.done { border-color: var(--ok); color: var(--ok); }
-      .strip span.now { background: var(--accent); border-color: var(--accent); color: #fff; }
-      .strip span.end { border-color: var(--bad); color: var(--bad); }
+      .strip { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+      .strip .step { color: var(--muted); }
+      .strip .step.done { color: var(--ok); }
+      .strip .step.now { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+      .strip .step.end { color: var(--bad); }
+      .strip .sep { color: var(--muted); opacity: 0.55; user-select: none; }
       /* budget bar */
       .bar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; display: flex; margin: 6px 0 4px; }
       .bar div { height: 100%; }

@@ -208,26 +208,37 @@ export class SessionManager {
 
   // ---------- widget-only transitions (the model never calls these)
 
+  /**
+   * One pick per recommendation list (§15.1): a different item from the CURRENT list replaces
+   * the previous pick from that list, keeping its line slot, so the widget never shows two
+   * picks from one list. Buying more than one item is the cart loop — a new browse gives a new
+   * list, and that list contributes its own line. Re-selecting the same product is a no-op.
+   */
   select(session_id: string, product_id: string): OrderLine {
     const s = this.reopen(session_id);
     const c = s.candidates.find((x) => x.product.id === product_id);
     if (!c) throw new SessionError("not_a_candidate", `${product_id} is not in the current recommendations`);
-    if (s.selections.some((l) => l.product_id === product_id)) throw new SessionError("already_selected", `${product_id} is already in the order`);
+    const already = s.selections.find((l) => l.product_id === product_id);
+    if (already) return already;
+    const currentIds = new Set(s.candidates.map((x) => x.product.id));
+    const prior = s.selections.find((l) => currentIds.has(l.product_id));
     const line: OrderLine = {
-      line_id: `l_${s.selections.length + 1}`,
+      line_id: prior ? prior.line_id : `l_${s.selections.length + 1}`,
       product_id,
       shop_id: c.product.shop_id,
       product_name: c.product.product_name,
       price: c.product.price,
     };
-    s.selections.push(line);
+    if (prior) s.selections = s.selections.map((l) => (l.line_id === prior.line_id ? line : l));
+    else s.selections.push(line);
     // The human may overrule the agent's flag; if they do, the record says so (invariant 5).
+    // A `replaced` id marks a changed pick so the feed and the projection can follow it.
     this.emit({
       session_id,
       span_id: "widget",
       type: "candidate.selected",
       source: "server",
-      payload: { ...line, overrode_flag: c.outcome === "rejected" },
+      payload: { ...line, overrode_flag: c.outcome === "rejected", ...(prior ? { replaced: prior.product_id } : {}) },
     });
     // Next: billing if we do not have it yet; otherwise the agent asks about more items or checks out.
     s.step = s.billing ? "select" : "billing";

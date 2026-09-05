@@ -147,8 +147,21 @@ describe("session manager", () => {
     expect(() => m.select(id, "p_1")).toThrow(/not in the current recommendations/);
     m.propose(id, ["p_1"], [{ product_id: "p_2", reason: "suspicious" }]);
     m.select(id, "p_1");
-    expect(() => m.select(id, "p_1")).toThrow(/already/);
+    expect(m.select(id, "p_1").product_id).toBe("p_1"); // re-selecting the same item is a no-op
+    expect(m.snapshot(id).selections).toHaveLength(1);
     expect(() => m.checkout(id)).toThrow(/billing/);
+  });
+
+  it("one pick per recommendation list: selecting another item replaces the pick and keeps the slot", () => {
+    const { m, id } = fresh();
+    toBrowsed(m, id);
+    m.propose(id, ["p_1", "p_2"], []);
+    m.select(id, "p_1");
+    expect(m.snapshot(id).selections.map((l) => l.product_id)).toEqual(["p_1"]);
+    m.select(id, "p_2"); // same list -> replaces, does not add a second line
+    const sel = m.snapshot(id).selections;
+    expect(sel).toHaveLength(1);
+    expect(sel[0]).toMatchObject({ product_id: "p_2", line_id: "l_1" });
   });
 
   it("the human may overrule a flag, and the record says so", () => {
@@ -213,14 +226,17 @@ describe("session manager", () => {
     expect(m.consumeApproval(id, q2.quote_id).quote_id).toBe(q2.quote_id);
   });
 
-  it("select after checkout reopens the session and re-quotes with both lines", () => {
+  it("a second browse adds a cart line, reopening a checked-out session and re-quoting both", () => {
     const { m, id } = fresh();
     toBrowsed(m, id);
     m.propose(id, ["p_1", "p_2"], []);
     m.select(id, "p_1");
     m.submitBilling(id, BILLING);
     const q1 = m.checkout(id);
-    m.select(id, "p_2");
+    // The cart grows across browse cycles (§15.1): a new list contributes its own line.
+    m.recordBrowse(id, { query: "cable", min: "1.00", max: "500.00" }, [P("p_3", "349.00")], []);
+    m.propose(id, ["p_3"], []);
+    m.select(id, "p_3");
     expect(m.snapshot(id)).toMatchObject({ phase: "shopping", step: "select" });
     expect(m.snapshot(id).pending_quote).toBeUndefined();
     const q2 = m.checkout(id);

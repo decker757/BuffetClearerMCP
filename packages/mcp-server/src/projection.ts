@@ -75,11 +75,17 @@ export function projectSnapshot(events: SessionEvent[]): SessionSnapshot | undef
         step = "select";
         reopen();
         break;
-      case "candidate.selected":
-        selections.push({ line_id: str(p, "line_id"), product_id: str(p, "product_id"), shop_id: str(p, "shop_id"), product_name: str(p, "product_name"), price: str(p, "price") });
+      case "candidate.selected": {
+        // Upsert by line_id: a changed pick re-emits the same slot (one pick per list), so it
+        // replaces rather than duplicates — mirroring SessionManager.select.
+        const line = { line_id: str(p, "line_id"), product_id: str(p, "product_id"), shop_id: str(p, "shop_id"), product_name: str(p, "product_name"), price: str(p, "price") };
+        const at = selections.findIndex((l) => l.line_id === line.line_id);
+        if (at >= 0) selections[at] = line;
+        else selections.push(line);
         step = billing_present ? "select" : "billing";
         reopen();
         break;
+      }
       case "billing.submitted":
         billing_present = true;
         step = "billing";
