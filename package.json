@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "tsc -b packages/shared packages/payments packages/mcp-server packages/shops scripts && tsc -p packages/widget",
+    "typecheck": "tsc -b packages/shared packages/payments packages/mcp-server packages/shops scripts && tsc -p packages/widget && tsc -p packages/evals",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:widget": "npm run dev -w @aishop4u/widget",
@@ -24,7 +24,8 @@
     "dev:shops": "npm run dev -w @aishop4u/shops",
     "x402:buy": "tsx scripts/x402-buy.ts",
     "settle:demo": "tsx scripts/settle-demo.ts",
-    "sweep:shops": "tsx scripts/sweep-shops.ts"
+    "sweep:shops": "tsx scripts/sweep-shops.ts",
+    "eval": "vitest run --config vitest.eval.config.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

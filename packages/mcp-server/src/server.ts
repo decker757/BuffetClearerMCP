@@ -1,4 +1,4 @@
-import { BrowseResultSchema, MoneySchema, type Product } from "@aishop4u/shared";
+import { BrowseResultSchema, money, type Product } from "@aishop4u/shared";
 import { PolicyError, settlePurchase } from "@aishop4u/payments";
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -78,8 +78,9 @@ export function createServer(deps: Deps): McpServer {
       inputSchema: {
         session_id: SessionId,
         query: z.string().min(1).max(200).describe("What to look for, e.g. 'laptop' or 'usb-c cable'"),
-        min_price: MoneySchema.describe("Lower bound in dollars, e.g. '600'"),
-        max_price: MoneySchema.describe("Upper bound in dollars, e.g. '1200'"),
+        // Separate instances on purpose: a shared one publishes the second as a `$ref` (REVIEW-LOG phase 7).
+        min_price: money().describe("Lower bound in dollars, e.g. '600'"),
+        max_price: money().describe("Upper bound in dollars, e.g. '1200'"),
         reason: Reason,
       },
       outputSchema: z.object({
