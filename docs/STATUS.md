@@ -15,23 +15,27 @@ I want to buy a laptop", gave a range, selected in the widget, entered billing i
 widget, approved in the widget, and Claude settled a real 849 RLUSD purchase on XRPL
 testnet through x402: session wallet funded to the cent from the treasury, shop paid via
 the t54 facilitator, manifest hash in the payment memo, mock card captured for 849.25,
-receipt with explorer links. 90 tests pass. The README, the architecture diagram and the
-transaction table are done. What is left is demo polish, the backup video, the slides,
-and the final feedback form.
+receipt with explorer links. 104 tests pass, plus 10/10 agent behaviour eval scenarios
+against real Claude. The README, the architecture diagram and the transaction table are
+done. What is left is demo polish, the backup video, the slides, and the final feedback
+form.
 
 ## What is built and verified
 
 | Piece | State | Proof |
 |---|---|---|
 | Mock merchant (`packages/shops`) | done | 20 tests; real x402 purchases settled via the hosted facilitator |
-| Payments layer (`packages/payments`) | done | 34 tests incl. budget refusal, policy refusals, lying shop, cross-process pool |
-| MCP server (`packages/mcp-server`) | done | 27 tests incl. scripted driver over MCP; live over stdio and HTTP |
+| Payments layer (`packages/payments`) | done | 47 tests incl. budget refusal, policy refusals, lying shop, cross-process pool, and the full failure-mode matrix |
+| MCP server (`packages/mcp-server`) | done | 29 tests incl. scripted driver over MCP; live over stdio and HTTP |
 | Widget + dashboard (`packages/widget`) | done | rendered in Claude Desktop; `/dashboard?session=<id>` read-only |
 | Event log + manifest | done | hash chain verifies via `GET /sessions/:id/verify`; memo on-ledger |
 | Treasury / wallets | done | treasury ~652 RLUSD, 2 pool wallets idle, 2 shop wallets; all in `.wallets/` (gitignored, testnet seeds) |
 | README | done | overview, architecture, x402 flow, Starter Kit paragraph, tx table, setup |
 | Architecture diagram | done | `docs/architecture.svg` (drop into the slide) |
-| Review log | done | `docs/REVIEW-LOG.md`, phases 1-6 |
+| Agent behaviour evals (`packages/evals`) | done | `npm run eval`: 10/10 scenarios vs real Claude; planted listing flagged 5/5 with numbers cited; ~$0.75 a run |
+| Failure-mode matrix | done | `docs/FAILURE-MODES.md` + `chaos.test.ts`: shop breaks, lies, or takes the money and denies it; ledger drops; card declines |
+| Judge-facing summary | done | `docs/EVALUATION.md`, linked from the README |
+| Review log | done | `docs/REVIEW-LOG.md`, phases 1-8 |
 
 ## What is left, in priority order
 

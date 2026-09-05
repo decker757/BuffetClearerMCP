@@ -42,7 +42,16 @@ export interface PayLineResult {
   tx_hash: string;
   explorer: string;
   invoice_sent_to: string;
+  /** the confirmation came from asking the shop, not from the paid request's own response */
   already_settled: boolean;
+  /**
+   * A payment was sent from THIS session wallet during THIS run, so the line is
+   * part of the wallet's balance delta. Not the same as `!already_settled`: a
+   * shop can take the money and return a body we cannot read, and the line is
+   * then both recovered and paid this run. Reconciliation keys on this
+   * (REVIEW-LOG phase 8).
+   */
+  paid_this_run: boolean;
 }
 export interface PayLineRefused {
   ok: false;
@@ -160,7 +169,7 @@ export async function payLine(input: PayLineInput): Promise<PayLineResult | PayL
       return { ok: false, kind: "refused", rule, message: policy?.message ?? reason };
     }
     // The shop 402'd again after we sent a payment header: maybe settled, maybe not. Ask the ledger.
-    return await afterUncertainPayment(input, fetchImpl, sink, base, t0, "shop_re_402", reason || "shop re-issued 402 after payment");
+    return await afterUncertainPayment(input, fetchImpl, sink, base, t0, "shop_re_402", reason || "shop re-issued 402 after payment", undefined, true);
   }
   if (result.status === "declined" || result.status === "requires_confirmation") {
     // Verifiable-intent provider outcomes; we run none, so this cannot happen, but it is unsigned.
@@ -169,7 +178,16 @@ export async function payLine(input: PayLineInput): Promise<PayLineResult | PayL
   }
   if (result.status === "failed") {
     // Could be before or after the paid request; the ledger decides.
-    return await afterUncertainPayment(input, fetchImpl, sink, base, t0, "sdk_failed", result.reason ?? "unknown");
+    /**
+     * `sdk_failed` covers both "died before signing" and "signed, and we lost the
+     * response". We cannot tell them apart from here, so we assume the payment went
+     * out: the alternative marks every lost-response settlement unreconciled, which
+     * is the false alarm this flag exists to prevent. Getting it wrong the other way
+     * can only over-count `settledThisRun` against the ledger delta, which raises
+     * `unreconciled` — it can never inflate a capture, because the capture is
+     * computed from the delta. REVIEW-LOG phase 8.
+     */
+    return await afterUncertainPayment(input, fetchImpl, sink, base, t0, "sdk_failed", result.reason ?? "unknown", result.transaction, true);
   }
   if (!result.response) return fail(sink, base, line, t0, "no_response", "SDK returned success without a response");
 
@@ -187,11 +205,11 @@ export async function payLine(input: PayLineInput): Promise<PayLineResult | PayL
     order = undefined;
   }
   if (!order?.order_id) {
-    return await afterUncertainPayment(input, fetchImpl, sink, base, t0, "order_unparseable", `order body unreadable; tx ${result.transaction ?? "?"}`, result.transaction);
+    return await afterUncertainPayment(input, fetchImpl, sink, base, t0, "order_unparseable", `order body unreadable; tx ${result.transaction ?? "?"}`, result.transaction, true);
   }
   const settled = { ...order, tx_hash: order.tx_hash ?? result.transaction ?? "" };
   sink.emit({ ...base, type: "purchase.settled", source: "server", duration_ms: Date.now() - t0, payload: settledPayload(line, settled, false) });
-  return ok(settled, false);
+  return ok(settled, false, true);
 }
 
 /** Ask the shop for an order by ref and confirm it on the ledger. Undefined unless both agree. */
@@ -229,17 +247,26 @@ async function afterUncertainPayment(
   rule: string,
   message: string,
   tx_hash?: string,
+  /**
+   * Whether a payment definitely went out from this wallet in this run. Passed in
+   * rather than assumed: `sdk_failed` fires for SDK errors that happen before
+   * anything is signed, and counting one of those towards this run's spend would
+   * let a line a PREVIOUS run paid inflate the reconciliation total.
+   */
+  sentPayment = false,
 ): Promise<PayLineResult | PayLineRefused> {
   const recovered = await recover(input, fetchImpl);
   if (recovered) {
+    // The ledger confirms the shop has the money. If we sent the payment, the
+    // wallet's balance moved here, so the line counts towards this run's spend.
     sink.emit({ ...base, type: "purchase.settled", source: "server", duration_ms: Date.now() - t0, payload: { ...settledPayload(input.line, recovered, true), after: rule } });
-    return ok(recovered, true);
+    return ok(recovered, true, sentPayment);
   }
   return fail(sink, base, input.line, t0, rule, message, tx_hash);
 }
 
-function ok(o: OrderResponse, already: boolean): PayLineResult {
-  return { ok: true, order_id: o.order_id, tx_hash: o.tx_hash, explorer: EXPLORER_TX + o.tx_hash, invoice_sent_to: o.invoice_sent_to ?? "", already_settled: already };
+function ok(o: OrderResponse, already: boolean, paid_this_run = false): PayLineResult {
+  return { ok: true, order_id: o.order_id, tx_hash: o.tx_hash, explorer: EXPLORER_TX + o.tx_hash, invoice_sent_to: o.invoice_sent_to ?? "", already_settled: already, paid_this_run };
 }
 
 function settledPayload(line: Line, o: OrderResponse, recovered: boolean): Record<string, unknown> {

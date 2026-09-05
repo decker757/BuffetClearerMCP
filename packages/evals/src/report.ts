@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_MODEL, addUsage, emptyUsage, estimateCost, type Trace, type Usage } from "./claude.js";
+import { DEFAULT_MODEL, addUsage, emptyUsage, estimateCost, hasApiKey, type Trace, type Usage } from "./claude.js";
 
 /**
  * Scenario results are written as JSON lines by the worker that ran them and
@@ -152,8 +152,10 @@ export function printReport(): void {
       `API usage: ${total.requests} requests, ${total.input_tokens.toLocaleString()} input + ${total.output_tokens.toLocaleString()} output tokens ` +
         `(~$${estimateCost(total, model).toFixed(3)} at ${model} list prices).`,
     );
-  } else {
+  } else if (!hasApiKey()) {
     lines.push("API usage: none (no ANTHROPIC_API_KEY; only the deterministic guardrail suite ran).");
+  } else {
+    lines.push("API usage: none — a key is set but no request succeeded. See the scenario rows above for the error.");
   }
   lines.push("");
   console.log(lines.join("\n"));

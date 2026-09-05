@@ -143,6 +143,53 @@ implementation detail** — dump what you actually send before assuming it is wh
 you wrote. And **an eval that cannot fail is not evidence**: write the
 misbehaving case first, and make sure every guard fires on it.
 
+## Phase 8: failure-mode matrix and chaos tests (5 Sep)
+
+`docs/FAILURE-MODES.md` is the new artefact: every way this can break, what the
+user sees, what the model is told, where the RLUSD and the card hold end up, and
+the test that proves it. Writing it meant testing nine paths that shipped
+untested, and two of them were wrong.
+
+| What we did wrong | Why it mattered | What we changed | Guarded by |
+|---|---|---|---|
+| Reconciliation treated "confirmed by asking the shop" as "settled by a previous run" | `settledThisRun` was `ok && !already_settled`. A shop that settles but returns a body we cannot read is recovered *within the same run* — the money left the wallet here — yet it was excluded from this run's spend. The ledger delta then disagreed with the confirmed lines, so a purchase that fully succeeded emitted `purchase.failed{rule:"unreconciled"}`, returned `ok:false`, and showed the user a partial receipt while paging an operator | `PayLineResult` carries `paid_this_run`, set when a payment was sent from this session wallet in this run whatever route the confirmation took. Reconciliation keys on that, not on `already_settled` | `chaos.test.ts` "settles but returns a body with no order: recovery reads the order back and the line counts as settled" |
+| A declined card parked the session in `settling` | `card.authorise` threw a plain `Error`, and `server.ts` treats anything that is not a `PolicyError` as "money may have moved, hold for an operator". But the wallet had already gone back to the pool and nothing had been funded. The most ordinary failure in commerce — a declined card, which becomes real at §5 step 11 — would have dead-ended the session with no path but starting over | The authorisation failure is a `PolicyError("card_declined")` with a `payment.refused` event, so the session returns to `checkout` and the user can approve again | `chaos.test.ts` "refused as a policy failure, so the user can approve again" |
+| CLAUDE.md §7 said a failed line "is released on the card", full stop | True only when nothing left the wallet. When a shop takes the RLUSD and denies the order we capture on the ledger delta — releasing would mean keeping the customer's money, which §13 forbids. A judge reading §7 and then watching a capture on a failed line would see a contradiction | §7 now splits the two cases and points at the matrix | `chaos.test.ts` "the card is captured on what LEFT the wallet, and the mismatch is logged" |
+| Nine failure paths existed in code with no test | `shop_error`, `shop_unreachable`, `sdk_failed`, `shop_re_402` (with and without the money moving), `order_unparseable` (recoverable and not), `sweep_failed`, `treasury_underfunded`, `card_declined`. `treasury_underfunded` is the one that actually broke the first live Claude Desktop approval (phase 6) and still had no test | `chaos.test.ts`: ten tests, each asserting where the RLUSD went, what the card did, and which rule was logged. The fake shop gained a `misbehave` option for the §7 behaviours | `chaos.test.ts` |
+| A restart between approval and purchase was undocumented | Sessions live in memory. We knew the log survived; nobody had checked that the approval cannot be spent against afterwards, or that the dashboard still renders the session | A test asserts the new process refuses with `unknown_session`, the projection still shows `approved` with the right total, the chain still verifies, and no `card.authorised` or `session.funded` was ever emitted | `projection.test.ts` "a restart after approval loses the approval, keeps the record, and cannot spend" |
+| The phase 7 assessment said `quote_tampered` had no test | It does: `session.test.ts` mutates the quote hash after approval and asserts the refusal. What is true is narrower — the path is unreachable through the public tool surface, because any re-checkout deletes the approval record | Recorded accurately in the matrix as defence in depth, with the claim it actually supports | `session.test.ts` "approval is bound to the quote hash and expires" |
+
+### What the phase 8 review then found
+
+| What we did wrong | Why it mattered | What we changed | Guarded by |
+|---|---|---|---|
+| The "network dies mid-payment" test killed the wrong request | A clean line is three POSTs: our 402 probe, the SDK's unpaid request, then the paid one. The test threw on the second, so nothing was ever signed — it was testing a *pre-payment* failure while claiming to prove rule 3, and the matrix row said "the ledger confirms nothing left" about a case where nothing could have left | Two tests: one that dies before the payment goes out (asserting `paidRequests === 0`), and one that lets the shop settle and then loses the response — which is the only direct regression test for the `paid_this_run` fix | `chaos.test.ts` "dies BEFORE the payment goes out" / "dies AFTER the payment lands" |
+| A failed balance read captured the card on shop claims | `spent` is seeded from what the shops confirmed and only overwritten once the ledger read succeeds. If that read threw, the catch still captured — on claims, with `reconciled: true`. Rule 1 exactly inverted, and the `paid_this_run` change made the amount strictly larger | The read is tracked; if it never lands the run is `reconciled: false` and the event is `ledger_unreadable{capturing_on:"shop_confirmations"}` rather than `sweep_failed` | `chaos.test.ts` "the balance read fails: we are capturing on shop claims" |
+| The dashboard showed a refused settlement as still `approved` | `projectSnapshot` had no `payment.refused` case, so after a declined card (or a treasury/pool refusal) the projection sat on "approved — waiting for the agent to settle" with no approve button, while the widget correctly showed the session back at checkout. The matrix's "approval card returns" was true in Claude Desktop and false on `/dashboard` | The projection reopens on a settlement-level refusal. Per-line refusals during settling carry a `line_id`; these do not, which is the discriminator | `projection.test.ts` "a settlement refusal before money moves puts the projection back at checkout" |
+| The widget's receipt said "card captured" and " RLUSD" whatever happened | On a fully failed run nothing is captured, and the card leg is fiat (§3, two rails). Both were visible on the shop-500 path the matrix documents | Header reads "nothing settled" when there is no capture; card amounts render as USD | `render.ts` `usd()` |
+| The raw card error went to the model verbatim | Phase 4 clipped shop messages to 200 chars for exactly this reason; a live Stripe error is the same class of third-party string arriving at the moment the model decides what to tell the user | Clipped to 200 | code review |
+
+**Where we did not take the review's advice.** It proposed deriving
+`paid_this_run` for `sdk_failed` from whether the SDK returned a transaction,
+because that rule also fires for failures before anything is signed. That is
+sound in the rare case it names — a previous run's line recovered late could
+inflate this run's total — but it makes the *common* case wrong: a payment that
+lands and loses its response would be marked unreconciled every time, which is
+the exact false alarm this flag was added to remove. We assume the payment went
+out, because getting it wrong that way can only over-count `settledThisRun`
+against the ledger delta and raise `unreconciled`; it can never inflate a
+capture, since the capture is computed from the delta. The residual risk is
+written into the code comment rather than left for someone to rediscover.
+
+Test count: 90 → 104.
+
+Lesson for the six rules: **classify a failure by whether money moved, not by
+where the exception came from.** Two failures that both throw from the same line
+of code — a declined card and a dropped ledger socket after funding — need
+opposite answers, and the difference is the only thing the user experiences.
+Corollary, learned twice in this phase: **a chaos test has to prove which side of
+the payment it broke.** Count the requests.
+
 ## Things we decided not to fix, and why (phase 4)
 
 - **App-only tools are enforced by the host.** ext-apps only stamps `_meta.ui.visibility`; the server has no way to know whether a `tools/call` came from the widget or the model. Claude honours the flag. A per-session widget token handed over the app bridge is the production fix and goes on the slide, not in the demo.

@@ -87,6 +87,21 @@ export interface FakeShopOptions {
   lieOnRecovery?: boolean;
   /** serve GET /products from this function (e.g. the real Catalog) */
   browse?: (q: BrowseQuery) => BrowseResult;
+  /** the failure modes in CLAUDE.md §7, for docs/FAILURE-MODES.md */
+  misbehave?: Misbehaviour;
+}
+
+export interface Misbehaviour {
+  /** answer every order request with this status instead of the 402 dance */
+  status?: number;
+  /** takes the payment header, moves nothing, 402s again */
+  reIssue402AfterPayment?: boolean;
+  /** takes the RLUSD and 402s again anyway: the money moved, the order did not */
+  takeMoneyThenRe402?: boolean;
+  /** settles, then answers 200 with a body that carries no order */
+  unparseableOrderBody?: boolean;
+  /** GET /orders never finds anything: recovery is blind */
+  forgetOrders?: boolean;
 }
 
 /**
@@ -108,7 +123,10 @@ export async function startFakeShop(opts: FakeShopOptions): Promise<{ url: strin
     if (!parsed.success) return res.status(400).json({ error: "price_range_required", message: "q, min_price and max_price are required; min <= max" });
     return res.json(opts.browse(parsed.data));
   });
+  const bad = opts.misbehave ?? {};
+
   app.get("/orders", (req, res) => {
+    if (bad.forgetOrders) return res.status(404).json({ error: "unknown_invoice_ref" });
     if (opts.lieOnRecovery) {
       return res.json({ order_id: "o_lie", tx_hash: "D".repeat(64), product_id: undefined, status: "settled", invoice_sent_to: "te**@example.com" });
     }
@@ -121,12 +139,12 @@ export async function startFakeShop(opts: FakeShopOptions): Promise<{ url: strin
     const shop = shops.find((s) => s.shop_id === shop_id);
     const price = opts.prices[product_id];
     if (!shop || !price) return res.status(404).json({ error: "unknown_product" });
+    if (bad.status) return res.status(bad.status).json({ error: "shop_broke" });
     const ref = String(req.body?.invoice_ref ?? "");
     const existing = orders.get(ref);
     if (existing) return res.json({ ...existing, status: "settled", invoice_sent_to: "te**@example.com" });
     if (opts.lieOnRecovery) return res.json({ order_id: "o_lie", tx_hash: "D".repeat(64), status: "settled" });
-    const sig = req.get("PAYMENT-SIGNATURE");
-    if (!sig) {
+    const send402 = () => {
       const accepts = [
         {
           scheme: "exact",
@@ -141,9 +159,26 @@ export async function startFakeShop(opts: FakeShopOptions): Promise<{ url: strin
       const body = { x402Version: 2, error: "PAYMENT-SIGNATURE header is required", resource: { url: `http://fake/${shop_id}/${product_id}`, description: "", mimeType: "application/json" }, accepts, extensions: {} };
       res.setHeader("PAYMENT-REQUIRED", encodePaymentRequiredHeader(body));
       return res.status(402).json(body);
+    };
+    const sig = req.get("PAYMENT-SIGNATURE");
+    if (!sig) return send402();
+    // Paid request: from here the shop can misbehave in the ways §7 names.
+    if (bad.reIssue402AfterPayment) {
+      state.paidRequests += 1;
+      return send402(); // nothing moved, the shop just refuses to settle
+    }
+    if (bad.takeMoneyThenRe402) {
+      state.paidRequests += 1;
+      opts.ledger.move(opts.payerAddress, shop.payTo, price, ref); // took the RLUSD
+      return send402(); // ...and denies the order
     }
     state.paidRequests += 1;
     const tx_hash = opts.ledger.move(opts.payerAddress, shop.payTo, price, ref);
+    if (bad.unparseableOrderBody) {
+      if (!bad.forgetOrders) orders.set(ref, { order_id: `o_${orders.size + 1}`, tx_hash, product_id });
+      res.setHeader("PAYMENT-RESPONSE", base64EncodeUtf8(jsonCanonicalStringify({ success: true, transaction: tx_hash, network: "xrpl:1", payer: opts.payerAddress })));
+      return res.json({ status: "ok" }); // settled, but no order_id to read
+    }
     const order = { order_id: `o_${orders.size + 1}`, tx_hash, product_id };
     orders.set(ref, order);
     res.setHeader("PAYMENT-RESPONSE", base64EncodeUtf8(jsonCanonicalStringify({ success: true, transaction: tx_hash, network: "xrpl:1", payer: opts.payerAddress })));

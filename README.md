@@ -142,8 +142,11 @@ npm run provision -- shops      # two shop wallets with trustlines -> .wallets/s
 npm run provision -- pool 2     # session wallet pool -> .wallets/pool.json
 
 npm run build                   # all packages, including the widget bundle
-npm test                        # 90 tests: money math, hash chain, shops, policy, settlement, session, tools, projection
+npm test                        # 104 tests: money math, hash chain, shops, policy, settlement, session, tools, projection, failure modes
+npm run eval                    # agent behaviour evals: real Claude over the real tool surface (needs ANTHROPIC_API_KEY)
 ```
+
+**[`docs/EVALUATION.md`](docs/EVALUATION.md) is the testing story in one page**: what the four layers prove, the numbers (104 tests; 10/10 agent scenarios; the planted listing flagged 5/5 with numbers cited), how tracing works, and three curl commands to verify any session's hash chain yourself.
 
 Run the mock merchant, then register the MCP server in Claude Desktop:
 
@@ -191,8 +194,11 @@ packages/payments    policy, wallet pool, mock card, XRPL ledger + verifier, x40
 packages/shops       the mock merchant: seeded catalog, free browse, x402-gated orders, invoice stub
 packages/mcp-server  event log, session manager, tool surface, HTTP reads, dashboard route
 packages/widget      the MCP Apps monitor (single-file bundle), also the read-only dashboard
+packages/evals       agent behaviour evals: real Claude over the real tool surface, scored from the event log
 scripts/             provisioning, funding, sweeping, drivers
 data/catalog.json    16 products across two shops, one planted bad listing
+docs/EVALUATION.md   what we test and how, the numbers, and three curl commands to verify a session yourself
+docs/FAILURE-MODES.md  every failure: what the user sees, where the money ends up, and the test that proves it
 docs/REVIEW-LOG.md   every mistake the phase reviews caught, why it mattered, and the test that guards it
 CLAUDE.md            the full design: invariants, build order, decisions, demo script, compliance posture
 ```

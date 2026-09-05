@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { EventLog } from "./eventlog.js";
 import { projectSnapshot } from "./projection.js";
-import { SessionManager } from "./session.js";
+import { SessionError, SessionManager } from "./session.js";
 
 const P = (id: string, price: string, extra: Partial<Product> = {}): Product => ({
   id,
@@ -21,6 +21,16 @@ const P = (id: string, price: string, extra: Partial<Product> = {}): Product => 
   ...extra,
 });
 const BILLING = { name: "Test Buyer", email: "buyer@example.com", address: "1 Test St" };
+
+/** The `code` of the SessionError a call throws, which is what the tool guard shows the model. */
+function codeOf(fn: () => unknown): string {
+  try {
+    fn();
+  } catch (e) {
+    return e instanceof SessionError ? e.code : `unexpected: ${String(e)}`;
+  }
+  return "no error";
+}
 
 /** Fields the dashboard renders; description is not in the log by design. */
 function comparable(s: ReturnType<SessionManager["snapshot"]>) {
@@ -66,6 +76,49 @@ describe("snapshot projection from the event log", () => {
     expect(JSON.stringify(projectSnapshot(log.all(id)))).not.toContain("buyer@example.com");
   });
 
+  /**
+   * docs/FAILURE-MODES.md section 1: a refusal before money moves sends the live
+   * session back to checkout. The dashboard reads the projection, not the live
+   * session, so it has to agree — otherwise a declined card looks like a purchase
+   * that is still settling, with no way to approve again.
+   */
+  it("a settlement refusal before money moves puts the projection back at checkout", () => {
+    const log = new EventLog();
+    const m = new SessionManager(log, "0.25");
+    const id = m.start("a laptop", "r").session_id;
+    m.recordBrowse(id, { query: "laptop", min: "600.00", max: "1200.00" }, [P("p_1", "899.00")], []);
+    m.propose(id, ["p_1"], []);
+    m.select(id, "p_1");
+    m.submitBilling(id, BILLING);
+    const q = m.checkout(id);
+    m.approve(id, q.quote_id);
+    m.consumeApproval(id, q.quote_id);
+    // consumeApproval emits nothing, so the projection is still `approved` here: the
+    // refusal below arrives before any card or funding event ever exists.
+    expect(projectSnapshot(log.all(id))!.phase).toBe("approved");
+
+    // The card is declined: nothing moved, and the session reopens for another approval.
+    m.sinkFor(id).emit({ type: "payment.refused", source: "server", span_id: "purchase", payload: { rule: "card_declined", message: "insufficient funds" } });
+    m.settlementRefused(id);
+    expect(projectSnapshot(log.all(id))).toEqual(comparable(m.snapshot(id)));
+    expect(projectSnapshot(log.all(id))!.phase).toBe("checkout");
+
+    // A per-line refusal during settling must NOT reopen the session.
+    const m2 = new SessionManager(new EventLog(), "0.25");
+    const id2 = m2.start("a laptop", "r").session_id;
+    m2.recordBrowse(id2, { query: "laptop", min: "600.00", max: "1200.00" }, [P("p_1", "899.00")], []);
+    m2.propose(id2, ["p_1"], []);
+    m2.select(id2, "p_1");
+    m2.submitBilling(id2, BILLING);
+    const q2 = m2.checkout(id2);
+    m2.approve(id2, q2.quote_id);
+    m2.consumeApproval(id2, q2.quote_id);
+    const sink2 = m2.sinkFor(id2);
+    sink2.emit({ type: "card.authorised", source: "server", span_id: "p", payload: { auth_id: "a", amount: q2.total } });
+    sink2.emit({ type: "payment.refused", source: "server", span_id: "l", parent_span_id: "p", payload: { line_id: "l_1", rule: "quoted_ne_demanded" } });
+    expect(projectSnapshot(m2.log.all(id2))!.phase).toBe("settling");
+  });
+
   it("projects abort and reopen-from-checkout correctly", () => {
     const log = new EventLog();
     const m = new SessionManager(log, "0.25");
@@ -98,6 +151,44 @@ describe("event log across processes", () => {
     expect(reader.all("s_x")).toHaveLength(3);
     expect(EventLog.verify(reader.all("s_x")).ok).toBe(true);
     expect(reader.sessionsOnDisk()).toEqual(["s_x"]);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /**
+   * docs/FAILURE-MODES.md: the server restarts between the approval and the
+   * purchase. Sessions live in memory, so the approval is gone — but nothing was
+   * charged, the reads still work off the log, and the model is told plainly
+   * rather than being allowed to spend against a session nobody remembers.
+   */
+  it("a restart after approval loses the approval, keeps the record, and cannot spend", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aishop4u-restart-"));
+    const before = new SessionManager(new EventLog(dir), "0.25");
+    const id = before.start("a laptop", "user asked").session_id;
+    before.recordBrowse(id, { query: "laptop", min: "600.00", max: "1200.00" }, [P("p_1", "899.00")], []);
+    before.propose(id, ["p_1"], []);
+    before.select(id, "p_1");
+    before.submitBilling(id, BILLING);
+    const q = before.checkout(id);
+    before.approve(id, q.quote_id);
+    expect(before.snapshot(id).phase).toBe("approved");
+
+    // The process dies. A new one starts on the same log directory.
+    const after = new SessionManager(new EventLog(dir), "0.25");
+    expect(after.has(id)).toBe(false);
+    // The model is told `unknown_session: ...` by the tool guard, not given a way through.
+    expect(codeOf(() => after.consumeApproval(id, q.quote_id))).toBe("unknown_session");
+    expect(codeOf(() => after.get(id))).toBe("unknown_session");
+
+    // The reads a judge or the dashboard uses still work, and the chain still verifies.
+    const events = after.log.all(id);
+    const projected = projectSnapshot(events)!;
+    expect(projected.phase).toBe("approved");
+    expect(projected.ledger.approved_total).toBe("899.25");
+    expect(projected.billing_present).toBe(true);
+    expect(EventLog.verify(events).ok).toBe(true);
+    // Nothing was charged or funded: purchase never ran.
+    expect(events.map((e) => e.type)).not.toContain("card.authorised");
+    expect(events.map((e) => e.type)).not.toContain("session.funded");
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

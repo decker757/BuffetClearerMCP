@@ -114,8 +114,16 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
   try {
     ({ auth_id } = await input.card.authorise({ session_id, amount: quote.total, currency: "USD" }));
   } catch (e) {
+    // Nothing moved and the wallet is back in the pool, so this is a refusal, not an
+    // incident: a PolicyError sends the session to checkout for another approval.
+    // A plain Error would park it in `settling` and wait for a human, which is the
+    // wrong answer for the most ordinary failure there is (REVIEW-LOG phase 8).
     input.pool.transition(wallet.address, "idle");
-    throw e;
+    // A live card error is a third party's string reaching the model at the moment it
+    // decides what to tell the user: clipped, like shop messages (REVIEW-LOG phase 4).
+    const message = (e instanceof Error ? e.message : String(e)).slice(0, 200);
+    sink.emit({ type: "payment.refused", source: "server", span_id: span, payload: { rule: "card_declined", message } });
+    throw new PolicyError("card_declined", message);
   }
   sink.emit({ type: "card.authorised", source: "server", span_id: span, payload: { auth_id, amount: quote.total, currency: "USD", mocked: input.card.mocked } });
 
@@ -186,17 +194,25 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
   }
   // Keep quote order for the caller.
   lines.sort((a, b) => quote.lines.findIndex((l) => l.line_id === a.line_id) - quote.lines.findIndex((l) => l.line_id === b.line_id));
-  const settledThisRun = lines.filter((l) => l.result.ok && !l.result.already_settled).reduce<Money>((acc, l) => add(acc, l.price), "0.00");
+  // What this run's wallet actually paid out, which is what the ledger delta must equal.
+  // Not `!already_settled`: a line can be confirmed by asking the shop and still have
+  // been paid by this run (an unreadable response body). REVIEW-LOG phase 8.
+  const settledThisRun = lines.filter((l) => l.result.ok && l.result.paid_this_run).reduce<Money>((acc, l) => add(acc, l.price), "0.00");
   const settled = lines.filter((l) => l.result.ok).reduce<Money>((acc, l) => add(acc, l.price), "0.00");
 
   // 4. Sweep whatever is left back to treasury, manifest hash in the memo. Reconcile against the ledger.
   input.pool.transition(wallet.address, "sweeping");
   let sweep_tx: string | undefined;
   let released: Money = "0.00";
+  // Seeded from what the shops confirmed, but only the ledger read below makes it
+  // trustworthy. If that read never lands we are capturing on shop claims, which is
+  // rule 1 inverted, so the run is marked unreconciled for an operator.
   let spent: Money = settledThisRun;
   let reconciled = true;
+  let ledgerRead = false;
   try {
     const remaining = await ledger.rlusdBalance(wallet.address);
+    ledgerRead = true;
     spent = toCents(startBalance) >= toCents(remaining) ? sub(startBalance, remaining) : "0.00";
     if (!eq(spent, settledThisRun)) {
       reconciled = false;
@@ -234,7 +250,11 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
     input.pool.transition(wallet.address, "idle");
   } catch (e) {
     input.pool.transition(wallet.address, "attention");
-    sink.emit({ type: "purchase.failed", source: "server", span_id: span, payload: { rule: "sweep_failed", message: e instanceof Error ? e.message : String(e), wallet: wallet.address } });
+    const rule = ledgerRead ? "sweep_failed" : "ledger_unreadable";
+    // Without the balance read we never learned what left the wallet, so `spent` is
+    // still the shops' word for it. Never let that pass as reconciled.
+    if (!ledgerRead) reconciled = false;
+    sink.emit({ type: "purchase.failed", source: "server", span_id: span, payload: { rule, message: e instanceof Error ? e.message : String(e), wallet: wallet.address, capturing_on: ledgerRead ? "ledger" : "shop_confirmations" } });
   }
 
   // 5. Card: capture what the ledger says was spent (plus recovered lines, verified on-ledger) and the fee.

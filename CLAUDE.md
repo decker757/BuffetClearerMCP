@@ -477,9 +477,21 @@ The session wallet is our answer to both.
 
 A shop that takes payment and returns 402 again, or returns a confirmation that
 fails to parse, emits `purchase.failed` carrying the bounded loss (at most one
-line price) and that line is not retried. The line is released on the card, the
-remainder sweeps to treasury, and the receipt says which item did not go through.
-This is our answer to "what happens when a service fails".
+line price) and that line is not retried. What happens to the money depends on
+whether any of it left the wallet, and the ledger decides:
+
+- **Nothing left the wallet** (shop 500, unreachable, 402 again having moved
+  nothing, facilitator down, policy refusal): the line is released on the card
+  and the remainder sweeps to treasury.
+- **The RLUSD did leave** (the shop took it and denied the order): the card is
+  captured on what the ledger says moved — releasing it would mean keeping the
+  customer's money, which §13 forbids — and `purchase.failed{rule:"unreconciled"}`
+  is logged for an operator.
+
+Either way the receipt says which item did not go through. This is our answer to
+"what happens when a service fails", and **`docs/FAILURE-MODES.md` is the full
+matrix**: every failure, what the user sees, where the money ends up, and the
+test that proves it.
 
 **Sequential, not parallel.** All lines are paid from one session wallet, and
 one XRPL account has one sequence stream; concurrent autofill from the same
