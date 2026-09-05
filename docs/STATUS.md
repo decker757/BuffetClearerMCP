@@ -3,6 +3,11 @@
 Written for whoever picks this up in the morning. Read this, then `CLAUDE.md` §9 (demo
 script) and `docs/REVIEW-LOG.md` (every mistake we made and the test that guards it).
 
+> **Read `docs/PITCH-REVIEW.md` first.** It is the 5 Sep review of the pitch and it
+> **supersedes the priority order below**. Short version: the build is in better shape
+> than the pitch, the reframe is free, and the only proposed code change sits below a cut
+> line after the video and the slides.
+
 ## Where we are, in one paragraph
 
 **The whole product works end to end inside Claude Desktop.** A human said "Use Buffet:
