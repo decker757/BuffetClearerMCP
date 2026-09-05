@@ -270,6 +270,30 @@ same product ever appears in two consecutive browse lists, selecting it in the
 second is treated as already-in-cart (no-op). Fine for the demo; revisit if real
 catalogs repeat ids across searches.
 
+## UX fix (5 Sep): explorer links open from the widget; chat link made reliable
+
+Two link problems surfaced in a live run: the widget's explorer links did nothing
+when clicked, and the agent's chat receipt included the XRPL link only about half
+the time.
+
+- **Widget links were inert.** The MCP App loads in a `sandbox="allow-scripts"`
+  iframe (no `allow-popups`), so `<a target="_blank">` and `window.open` are
+  silently blocked. Fixed by routing every explorer/manifest link through the host
+  bridge's `app.openLink({ url })` (ext-apps): `link()` intercepts the click and
+  calls `transport.openLink`, which on the dashboard falls back to a normal
+  `window.open`. This is the reliable surface for the link, per §12/§9.
+- **Chat link was 50/50.** The `purchase` result already carries the explorer URL,
+  but the model composes its own prose and dropped it half the time. Instruction
+  step 9 now requires a clickable Markdown link per settled line and forbids bare
+  URLs / invented ones; the result text hands the model a ready-made
+  `[View on XRPL](…)` to copy. Still model-authored, so the widget remains the
+  guarantee — but far more consistent.
+
+| What changed | Why | Guarded by |
+|---|---|---|
+| `link()` routes clicks through `app.openLink`; `Transport.openLink` added | Sandboxed iframe blocks `target=_blank`; links did nothing | manual (host); dashboard uses `window.open` |
+| Instruction step 9 + result text use Markdown explorer links | Chat receipt inconsistently included/linked the tx | `tools.test.ts` asserts `[View on XRPL](https://testnet.xrpl.org/transactions/…)` |
+
 Follow-on: once billing is submitted the decision-table Select buttons are disabled
 in the widget (a tooltip points to the approval card's Abort to change the pick).
 Changing a selection after billing would only reopen the session and drop the

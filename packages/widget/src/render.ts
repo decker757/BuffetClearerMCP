@@ -61,6 +61,9 @@ function card(title: string, right?: string): { root: HTMLElement; body: HTMLEle
   root.append(body);
   return { root, body };
 }
+/** Set at the start of render() so link() can route clicks through the host bridge. */
+let openLinkFn: ((url: string) => void) | undefined;
+
 /** Links only ever point at https URLs; anything else (a hostile payload) renders as plain text. */
 function link(href: string, text: string): HTMLElement {
   if (!/^https:\/\/[a-z0-9.-]+\//i.test(href)) return el("span", "mono", text);
@@ -68,6 +71,13 @@ function link(href: string, text: string): HTMLElement {
   a.href = href;
   a.target = "_blank";
   a.rel = "noopener noreferrer";
+  // Inside Claude the iframe is sandboxed (no popups), so the native anchor is inert; route the
+  // click through the host bridge instead. On the dashboard openLinkFn opens a normal tab.
+  a.addEventListener("click", (ev) => {
+    if (!openLinkFn) return; // no handler: let the anchor try natively
+    ev.preventDefault();
+    openLinkFn(href);
+  });
   return a;
 }
 function money(m: string | undefined): string {
@@ -76,6 +86,7 @@ function money(m: string | undefined): string {
 /** The card leg is fiat (CLAUDE.md §3, two rails): never label it RLUSD. */
 function usd(m: string | undefined): string {
   return m === undefined ? "–" : `${m} USD`;
+}
 /** The card on file, e.g. "Visa •••• 4242 · test mode". No card is ever entered; this is always a test card. */
 function cardOnFile(s: Snapshot): string | undefined {
   const c = s.card;
@@ -315,18 +326,17 @@ function receipt(s: Snapshot, events: SessionEvent[]): HTMLElement | undefined {
   };
   row("Items settled", money(captured?.items ?? s.ledger.settled));
   row("Service fee", money(captured?.fee ?? s.ledger.fee));
-  row("Charged to card", usd(captured?.amount));
-  if (released?.amount && Number(released.amount) > 0) row("Released on card", usd(released.amount));
+  // The card leg is fiat (usd), the shop leg is RLUSD (money). Show the card on file next to the charge.
   const onFile = cardOnFile(s);
   if (onFile) {
     const charged = el("div");
-    charged.append(el("span", undefined, money(captured?.amount)));
+    charged.append(el("span", undefined, usd(captured?.amount)));
     charged.append(el("span", "muted", `  ${onFile}`));
     row("Charged to card", charged);
   } else {
-    row("Charged to card", money(captured?.amount));
+    row("Charged to card", usd(captured?.amount));
   }
-  if (released?.amount && Number(released.amount) > 0) row("Released on card", money(released.amount));
+  if (released?.amount && Number(released.amount) > 0) row("Released on card", usd(released.amount));
   for (const e of settled) {
     const p = e.payload as { order_id?: string; product_id?: string; explorer?: string; tx_hash?: string; invoice_sent_to?: string | null; amount?: string };
     const d = el("div");
@@ -484,6 +494,7 @@ function captureForm(rootEl: HTMLElement): () => void {
 // ---------- root render
 
 export function render(rootEl: HTMLElement, st: UiState, a: Actions): void {
+  openLinkFn = (url) => void st.transport.openLink(url);
   const restore = captureForm(rootEl);
   const s = st.snapshot;
   const frag = document.createDocumentFragment();

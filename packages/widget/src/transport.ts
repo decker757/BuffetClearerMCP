@@ -27,6 +27,9 @@ export interface Transport {
   abort(session_id: string): Promise<void>;
   /** Ask the host to post a user message so the agent continues without the user typing. False if not delivered. */
   nudge(text: string): Promise<boolean>;
+  /** Open an external URL. In the host the iframe is sandboxed (no popups), so this must go through
+   * the host bridge; on the dashboard it is a normal browser tab. Returns false if it could not open. */
+  openLink(url: string): Promise<boolean>;
   /** Fires when the host pushes a tool result (the model called a tool that renders this widget). */
   onToolResult?: (structured: Record<string, unknown>) => void;
   /** Fires with the tool call's name and arguments, before the result: every model tool carries session_id. */
@@ -101,6 +104,18 @@ export class HostTransport implements Transport {
       return false;
     }
   }
+
+  async openLink(url: string): Promise<boolean> {
+    // The inner iframe is sandboxed (allow-scripts, no allow-popups), so <a target=_blank> and
+    // window.open are inert. openLink asks the host to open it in the default browser.
+    try {
+      const { isError } = await this.app.openLink({ url }, { signal: AbortSignal.timeout(4000) });
+      return !isError;
+    } catch (e) {
+      console.info("[aishop4u widget] openLink failed:", e);
+      return false;
+    }
+  }
 }
 
 export class HttpTransport implements Transport {
@@ -136,5 +151,10 @@ export class HttpTransport implements Transport {
   }
   async nudge(): Promise<boolean> {
     return false;
+  }
+  async openLink(url: string): Promise<boolean> {
+    // The dashboard is a normal page, not a sandboxed iframe: a plain new tab works.
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    return w !== null;
   }
 }

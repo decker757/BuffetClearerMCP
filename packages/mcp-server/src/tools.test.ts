@@ -142,7 +142,7 @@ describe("tool surface", () => {
     const purchase = await h.call("purchase", { session_id: sid, quote_id, reason: "user approved in the widget" });
     expect(purchase.isError).toBe(false);
     expect(purchase.data).toMatchObject({ session_id: sid, ok: true, spent: price, fee: "0.25" });
-    expect(purchase.text).toMatch(/settled, order o_\d+, tx https:\/\/testnet\.xrpl\.org\/transactions\//);
+    expect(purchase.text).toMatch(/settled, order o_\d+, \[View on XRPL\]\(https:\/\/testnet\.xrpl\.org\/transactions\//);
     const lines = purchase.data.lines as Array<{ status: string; tx_hash: string }>;
     expect(lines[0]).toMatchObject({ status: "settled" });
     expect(h.shop.paidRequests).toBe(1);
