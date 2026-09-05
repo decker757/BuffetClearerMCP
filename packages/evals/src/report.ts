@@ -86,6 +86,9 @@ export async function recordingFailures<T>(scenario: string, model: string, fn: 
   try {
     return await fn();
   } catch (e) {
+    // A scenario that scored itself and then threw on its own assertions has already
+    // recorded the interesting row; a second one would double-count it as a failure.
+    if (readRows().some((r) => r.scenario === scenario)) throw e;
     record({
       scenario,
       model,
