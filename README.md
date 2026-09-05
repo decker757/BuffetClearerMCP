@@ -149,16 +149,24 @@ Run the mock merchant, then register the MCP server in Claude Desktop:
 
 ```bash
 npm run dev -w @aishop4u/shops    # http://localhost:4002
+npm run setup:claude              # writes the Claude Desktop config for your OS
 ```
 
-`%APPDATA%\Claude\claude_desktop_config.json`:
+`setup:claude` works on macOS, Windows and Linux: it finds the Claude Desktop config
+in the right place for your OS and registers the server with the **absolute path to your
+node** (`process.execPath`). That last part matters — Claude Desktop launches MCP servers
+with a minimal PATH that does not include Homebrew, nvm, etc., so a bare `"command":
+"node"` fails with **"Server disconnected"** whenever node is not on that PATH. If you
+prefer to edit the config by hand (`%APPDATA%\Claude\claude_desktop_config.json` on
+Windows, `~/Library/Application Support/Claude/…` on macOS), use the **absolute** path to
+both node and `dist/main.js`, not a bare `node`:
 
 ```json
 {
   "mcpServers": {
     "aishop4u": {
-      "command": "node",
-      "args": ["<absolute path>/packages/mcp-server/dist/main.js", "--stdio"]
+      "command": "/absolute/path/to/node",
+      "args": ["/absolute/path/to/packages/mcp-server/dist/main.js", "--stdio"]
     }
   }
 }

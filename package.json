@@ -20,6 +20,7 @@
     "spike:xrpl": "tsx scripts/xrpl-spike.ts",
     "fund:treasury": "tsx scripts/fund-treasury.ts",
     "provision": "tsx scripts/provision.ts",
+    "setup:claude": "node scripts/setup-claude.mjs",
     "dev:shops": "npm run dev -w @aishop4u/shops",
     "x402:buy": "tsx scripts/x402-buy.ts",
     "settle:demo": "tsx scripts/settle-demo.ts",
