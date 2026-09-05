@@ -1,8 +1,10 @@
 # Buffet
 
-**A control plane that lets an AI agent shop and buy on your behalf, where every step it takes is visible, the purchase needs your approval, and the money it can move is exactly the total you approved.**
+**The control plane that lets an AI agent spend at all: a spend-control layer with two ports — one to a merchant, one to a data provider — where every step the agent takes is visible, the purchase needs your approval, and the money it can move is capped at the total you approved and witnessed on-chain.**
 
-Built for the Ripple challenge at Singhacks 2026: an AI-native business on XRPL with x402 agentic payments. Claude is the shopping agent. Buffet is the MCP server and the inline widget between Claude and the money.
+Every network shipped an agent-payment spec this year. Almost none of them answers the two questions that decide whether you'd actually let an agent loose with money: what stops it overspending, and who can verify what it did afterwards. Buffet is that layer. Shopping for a laptop is one instantiation; the market is anywhere delegated spend needs a hard cap and an audit trail — small-business procurement first, where finance teams block agent spend today precisely because there is neither.
+
+Built for the Ripple challenge at Singhacks 2026: an AI-native business on XRPL with x402 agentic payments. Claude is the agent. Buffet is the MCP server and the inline widget between the agent and the money.
 
 > Product name is a working title. Team: BuffetClearers.
 
@@ -31,9 +33,9 @@ Two runs on the same server show it is not hardcoded to one category: a laptop, 
 
 ## Why XRPL
 
-Two jobs. It is the rail the purchase settles on, RLUSD from a session wallet that physically cannot hold more than the approved total, and it is the record: the hash of the session's append-only event log rides in the payment memo, so what the agent did and why is anchored somewhere neither we nor the shop can rewrite.
+Two jobs. It is the rail the purchase settles on — RLUSD from a session wallet funded to exactly the approved total, server-enforced and witnessed on-ledger — and it is the record: the hash of the session's append-only event log rides in the payment memo, so what the agent did and why is anchored somewhere neither we nor the shop can rewrite.
 
-The session wallet is our answer to "why not just give the agent a card with a limit". A card limit is the issuer's and per-transaction. Ours is the wallet balance, below the model, plus a record that cannot be rewritten. Payment Channels lock to one destination; Permission Delegation (XLS-75) scopes by transaction type, not amount. A funded-to-the-cent wallet does both.
+The session wallet is our answer to "why not just give the agent a card with a limit". A card credential is permission to pull: the limit lives with the issuer, and it is revocable and disputable only after the money has moved. A funded wallet is a balance, so the limit is arithmetic — the server funds it to exactly the approved total, below the model, and every payment out of it is proven on-chain rather than asserted. Payment Channels lock to one destination; Permission Delegation (XLS-75) scopes by transaction type, not amount. A funded-to-the-total wallet does both.
 
 ## Architecture
 
@@ -90,7 +92,7 @@ We used three of its four parts. The **XRPL Payments** and **Agent Wallet** skil
 | Question | Answer |
 |---|---|
 | What can the agent do alone | Browse and recommend. Selection, billing, approval and the amount are all outside its reach |
-| Spending limit | The session wallet holds exactly the approved item total; there is nothing else to spend |
+| Spending limit | The session wallet is server-funded to exactly the approved item total, and every payment out of it is witnessed on-ledger — the cap is arithmetic and checked, not asserted |
 | Approval it cannot forge | `approve_quote` is an app-only tool the model never sees; single-use, bound to the quote hash, five-minute expiry |
 | Transparency | Every tool call and payment is an event; model-stated reasons are labelled "agent", server facts "server"; every rejection is shown struck through with the reason |
 | Traceability | Hash-chained log per session; manifest hash in the purchase memo; `GET /sessions/:id/verify` re-hashes the chain from genesis |
