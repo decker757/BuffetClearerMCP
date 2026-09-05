@@ -61,6 +61,23 @@ config.mcpServers = {
 
 fs.writeFileSync(cfgFile, JSON.stringify(config, null, 2) + "\n");
 
+// macOS TCC: Documents/Desktop/Downloads are privacy-protected, and Claude Desktop
+// (a GUI app) can't read files there unless granted access — the spawned node then
+// fails with EPERM even though the file is perfectly readable from a shell.
+if (process.platform === "darwin") {
+  const home = os.homedir();
+  const protectedDirs = ["Documents", "Desktop", "Downloads"].map((d) => path.join(home, d) + path.sep);
+  if (protectedDirs.some((p) => REPO.startsWith(p))) {
+    console.warn(`⚠️  This repo is inside a macOS privacy-protected folder (Documents/Desktop/Downloads).
+    Claude Desktop will fail to launch the server with "EPERM: operation not permitted".
+    Fix EITHER by granting access:
+      System Settings → Privacy & Security → Full Disk Access → enable Claude, then fully quit & reopen it.
+    OR, more portably, move the repo somewhere unprotected and re-run this:
+      mv "${REPO}" ~/aishop4u && cd ~/aishop4u && npm run setup:claude
+`);
+  }
+}
+
 console.log(`AIShop4U registered in Claude Desktop.
   config:  ${cfgFile}
   node:    ${process.execPath}
