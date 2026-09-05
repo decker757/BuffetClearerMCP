@@ -105,19 +105,22 @@ async function boot(): Promise<void> {
   // user's channel (invariant 4).
   const actions: Actions = {
     select: (product_id) =>
-      act(() => transport.select(st.session_id!, product_id), undefined, "Selected. Add another, or enter billing details below."),
+      act(() => transport.select(st.session_id!, product_id), undefined, "Selected. Pick a different row to change your choice, or enter billing details below."),
     submitBilling: (b) =>
       act(() => transport.submitBilling(st.session_id!, b), {
         text: "Billing entered in the widget. Please proceed to checkout.",
         fallback: "Billing saved. Send the message in the chat box, or tell Claude to proceed to checkout.",
       }),
     approve: (quote_id) =>
+      // Approving settles the purchase on the server (the feed shows each step live while this runs);
+      // the user never confirms in chat. Once it returns, ask the agent to report the receipt — the
+      // money has already moved, so this message is a summary, not a trigger.
       act(
         async () => {
           await transport.approve(st.session_id!, quote_id);
           st.approvedQuote = quote_id;
         },
-        { text: "Approved in the widget. Please complete the purchase.", fallback: "Approved. Send the message in the chat box, or tell Claude to complete the purchase." },
+        { text: "Purchase settled in the widget. Please report the receipt.", fallback: "Settled — the receipt is shown here. Send the message in the chat box to have Claude report it." },
       ),
     abort: () => act(() => transport.abort(st.session_id!), { text: "I stopped the session in the widget.", fallback: "Stopped. Tell Claude if you want to start again." }),
     toggle: (seq) => {

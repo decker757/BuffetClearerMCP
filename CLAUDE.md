@@ -142,13 +142,16 @@ This is the commercial loop. Judges will ask for it by name.
 5. User enters name, email, address in the widget. Never in chat.
 6. Agent calls `checkout`. Server computes the total: item prices plus the flat
    fee. **That total is the ceiling.** Widget shows the approval card.
-7. User approves in the widget. Approval is recorded server-side; `purchase`
-   refuses without it.
-8. `purchase`: the card is authorised for the total (mocked by default; real
-   Stripe test-mode last, §5 step 11). A session wallet is drawn from the pool and
-   funded from treasury to exactly the item total, in RLUSD. Each shop is paid
-   over x402. The last payment carries the manifest hash in its memo. The card is
-   captured. Each shop emails its invoice.
+7. User approves in the widget. Approval is recorded server-side, and approving
+   **is** the trigger: the widget's `approve_quote` settles the purchase itself,
+   so the user never confirms again in chat.
+8. Settlement (driven by the approval, not by the model): the card is authorised
+   for the total (mocked by default; real Stripe test-mode last, §5 step 11). A
+   session wallet is drawn from the pool and funded from treasury to exactly the
+   item total, in RLUSD. Each shop is paid over x402. The last payment carries the
+   manifest hash in its memo. The card is captured. Each shop emails its invoice.
+   The widget shows every step live; the agent then calls `purchase` only to read
+   the receipt back and report it (it refuses if there is no approval record).
 9. If a shop payment fails, that line is released on the card, the remainder
    sweeps to treasury, and the user is told which item did not go through.
    Nothing is kept.
@@ -194,9 +197,11 @@ makes the demo smoother.
    screen.
 7. **Purchase requires a human approval the model cannot forge.** The widget's
    `approve_quote` is an app-only tool the model cannot call. It records approval
-   server-side, bound to the quote hash, single-use, short expiry.
-   `purchase(quote_id)` refuses unless that record exists. "Human keeps judgment"
-   is enforced the way invariant 2 is, not described.
+   server-side, bound to the quote hash, single-use, short expiry, and settlement
+   runs from that record — so the model triggers no spending at all. The
+   model-facing `purchase(quote_id)` only reads the receipt back and refuses
+   unless that record exists. "Human keeps judgment" is enforced the way
+   invariant 2 is, not described.
 8. **No stored value.** Remainders are released, never kept. No balance screen, no
    "add funds", no "use it next time". §13 explains why this is not negotiable.
 
@@ -259,13 +264,16 @@ Model-facing — the agent may call these:
 | `browse(query, min_price, max_price, reason)` | free GET to our inventory gateway; **400 without a price range**; returns typed product objects, never raw seller text | no |
 | `propose(recommended[], rejected[], reason)` | up to 5 recommended ids, plus any ids the agent flagged with a reason and the numbers it cites; emits `candidate.*` events; widget shows the decision table | no |
 | `checkout(reason)` | totals the selected lines plus the flat fee, emits `quote.ready`; refuses if billing is missing | no |
-| `purchase(quote_id)` | refuses without a server-side approval record (invariant 7); authorises the card, funds the session wallet to the item total, pays each shop over x402, captures, emits the receipt | yes |
+| `purchase(quote_id)` | **reads the receipt back** for a quote the user approved; the settlement itself runs from `approve_quote` (below), so this triggers no spending. Refuses without a server-side approval record (invariant 7) | no (reports) |
 
 App-only — the widget calls these, the model never sees them: `session_snapshot`,
 `session_events`, `select_candidate(candidate_id)`,
 `submit_billing(name, email, address)`, `approve_quote(quote_id)`,
 `abort_session(session_id)`. Billing details never pass through the model; the
-server holds them per session (§15.6).
+server holds them per session (§15.6). **`approve_quote` is where the money
+moves:** it records the human approval and then settles the purchase itself —
+funds the session wallet to the item total, pays each shop over x402, captures
+the card — so the user never confirms the purchase again in chat.
 
 Every model-facing tool takes a `reason`. The server turns it into an
 `agent.intent` event. There is no separate "think" tool; the model would forget to
@@ -760,11 +768,14 @@ structured result of `start_session`.
   badge; expanding shows the evidence numbers. A select button per row
   (invariant 7's mechanism, applied to selection). Invariant 5 on screen.
 - **Billing form.** Name, email, address. Submitted through `submit_billing`.
-  Shown once per session, before checkout.
+  Shown once per session, before checkout. Shows the test card on file (Visa
+  •••• 4242 · test mode), from the server snapshot, so the fiat leg is visible.
 - **Approval card.** Appears on `quote.ready`: items, shops, item total, fee,
-  total to be charged, the approve button (invariant 7), the abort button.
-- **Receipt.** On `card.captured`: `charged = items + fee`, one line per item with
-  its explorer link, manifest link, "invoice sent to" with the email masked.
+  total to be charged, the card it will be charged to, the approve button
+  (invariant 7), the abort button. Approving here settles the purchase itself.
+- **Receipt.** On `card.captured`: `charged = items + fee` (with the card on
+  file), one line per item with its explorer link, manifest link, "invoice sent
+  to" with the email masked.
 
 ---
 
@@ -880,7 +891,9 @@ mandatory.
    it finds suspicious goes in `rejected[]` with a reason (§8). The widget shows
    the 5 and the flagged rows struck through.
 4. User selects one in the widget, through `select_candidate`. The selection is a
-   server record the model cannot forge.
+   server record the model cannot forge. **One pick per recommendation list:**
+   choosing a different row replaces the pick (keeping its line slot), so a single
+   browse never produces two lines; more items come from the next browse (step 5).
 5. If the initial list has more items, go to 2 for the next one. Otherwise the
    agent asks whether there is anything else. Yes loops to 2. No continues.
 6. **Billing details** (name, email, address) are collected **in the widget**
@@ -890,9 +903,14 @@ mandatory.
    fee. **That total is the ceiling.** There is no separate hold on the price
    range; the range is a filter, the total is the money. Widget shows the
    approval card.
-8. User approves through `approve_quote`. Agent calls `purchase`: card
-   authorised for the total, session wallet funded to the item total, one x402
-   payment per shop, capture, receipt. Each shop emails its invoice.
+8. User approves through `approve_quote`, and that call **settles the purchase**:
+   card authorised for the total, session wallet funded to the item total, one
+   x402 payment per shop, capture, receipt. Each shop emails its invoice. The
+   agent does not trigger this and must not ask the user to confirm again in
+   chat; `purchase` is now a read-back the agent calls afterwards to report the
+   receipt (it refuses without the approval record). *(Amended 5 Sep — see the
+   REVIEW-LOG entry "approval triggers settlement"; supersedes the earlier "Agent
+   calls purchase" wording.)*
 9. Confirmation in chat and in the widget: which items, which shops, what was
    charged, where the invoice went.
 
@@ -970,8 +988,12 @@ the first thing that makes it so. What is built instead, and it looks the same
 to the user:
 
 1. `checkout` produces a total: items plus flat fee.
-2. `purchase` authorises the user's card for that total (Stripe PaymentIntent,
-   manual capture; mocked by default).
+2. The user's approval in the widget authorises their card for that total (Stripe
+   PaymentIntent, manual capture; mocked by default). **No card is ever entered:**
+   the card is a Stripe test card (`pm_card_visa`, Visa •••• 4242), and the widget
+   shows it on file on the billing form, the approval card and the receipt so the
+   fiat leg is visible without collecting card details. Real card capture via
+   Stripe Elements is a mainnet, not demo, concern (§13).
 3. A session wallet is drawn from the pool and funded from **our** treasury to
    exactly the item total in RLUSD. This is our money paying our suppliers.
 4. One x402 payment per shop. The last carries the manifest hash in its memo.
@@ -981,6 +1003,9 @@ to the user:
 6. The wallet returns to the pool holding only its XRP reserve. Nothing is kept
    for the user, nothing is remembered about their wallet, because they never
    had one.
+
+Steps 2–5 run from `approve_quote` when the user approves (amended 5 Sep, see the
+REVIEW-LOG); the model's `purchase` only reads the receipt back afterwards.
 
 Words: "charge", "authorised", "captured", "released". Never "top up", "your
 wallet", "your balance", "credit".

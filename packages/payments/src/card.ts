@@ -8,9 +8,18 @@ import { eq, lte, toCents, type Money } from "@aishop4u/shared";
  * test-mode implementation (step 11), selected when STRIPE_SECRET_KEY is set.
  * Nothing here touches the ledger. The server is the only bridge between the legs.
  */
+/** How the card on file reads on screen. No demo collects card details, so this is always a test card. */
+export interface CardDescriptor {
+  brand: string;
+  last4: string;
+  test: boolean;
+}
+
 export interface CardAuthoriser {
   /** false only for the real Stripe path; the event feed labels the charge accordingly. */
   readonly mocked: boolean;
+  /** Shown in the widget so the fiat leg is visible even though no card is ever entered (§15.4). */
+  readonly descriptor: CardDescriptor;
   authorise(p: { session_id: string; amount: Money; currency: "USD" }): Promise<{ auth_id: string }>;
   capture(p: { auth_id: string; amount: Money }): Promise<{ capture_id: string }>;
   release(p: { auth_id: string }): Promise<void>;
@@ -25,6 +34,8 @@ interface Auth {
 
 export class MockCardAuthoriser implements CardAuthoriser {
   readonly mocked = true;
+  // The same Visa test card the Stripe path uses, so the widget reads the same in both modes.
+  readonly descriptor: CardDescriptor = { brand: "Visa", last4: "4242", test: true };
   readonly auths = new Map<string, Auth>();
 
   async authorise(p: { session_id: string; amount: Money; currency: "USD" }): Promise<{ auth_id: string }> {
@@ -65,6 +76,7 @@ export class MockCardAuthoriser implements CardAuthoriser {
  */
 export class StripeCardAuthoriser implements CardAuthoriser {
   readonly mocked = false;
+  readonly descriptor: CardDescriptor;
   private readonly stripe: Stripe;
   private readonly paymentMethod: string;
 
@@ -75,6 +87,8 @@ export class StripeCardAuthoriser implements CardAuthoriser {
     this.stripe = new Stripe(apiKey);
     // Stripe's built-in test Visa that authorises without a 3DS redirect.
     this.paymentMethod = opts?.paymentMethod ?? "pm_card_visa";
+    // pm_card_visa is the 4242 Visa; any other test PM we cannot name without a Stripe call.
+    this.descriptor = this.paymentMethod === "pm_card_visa" ? { brand: "Visa", last4: "4242", test: true } : { brand: "Card", last4: "••••", test: true };
   }
 
   async authorise(p: { session_id: string; amount: Money; currency: "USD" }): Promise<{ auth_id: string }> {

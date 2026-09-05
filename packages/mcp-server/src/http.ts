@@ -66,7 +66,7 @@ export function createHttpApp(deps: Deps): Express {
   app.get("/sessions/:id", (req, res) => {
     const id = req.params.id;
     if (deps.manager.has(id)) {
-      res.json({ ...deps.manager.snapshot(id), pool: deps.pool.counts(), source: "live" });
+      res.json({ ...deps.manager.snapshot(id), pool: deps.pool.counts(), card: deps.card.descriptor, source: "live" });
       return;
     }
     const snap = projectSnapshot(events(id));
@@ -74,7 +74,7 @@ export function createHttpApp(deps: Deps): Express {
       res.status(404).json({ error: "unknown_session" });
       return;
     }
-    res.json({ ...snap, pool: deps.pool.counts(), source: "log" });
+    res.json({ ...snap, pool: deps.pool.counts(), card: deps.card.descriptor, source: "log" });
   });
 
   app.get("/sessions/:id/events", (req, res) => {

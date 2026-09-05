@@ -153,3 +153,82 @@ misbehaving case first, and make sure every guard fires on it.
 - **Seeds are plaintext in `.wallets/*.json`.** Testnet only, gitignored, atomic writes. §15.5 says encrypted at rest for production; that is a roadmap line, not a demo task.
 - **The mock card captures again on a retry.** Stripe would refuse a second capture; the mock does not care. Phase 4 must not call `settlePurchase` twice for the same quote unless the first run returned a `card_error`.
 - **`payers` is every pool address.** Recovery accepts a payment from any of our wallets, because a retry may draw a different one. Tight enough: the destination, amount and invoice reference still have to match.
+
+## UX changes (5 Sep): approval triggers settlement; test card on file
+
+Two changes from watching a live run, both agreed with the team before they were made.
+
+**1. Approving in the widget now settles the purchase.** Previously the flow was
+"user clicks Approve in the widget → user then confirms in chat → the agent calls
+`purchase`". Clicking Approve did nothing on its own, because in Claude Desktop the
+model only acts on a user turn and the widget's `sendMessage` is staged in the
+composer, not sent — so the user had to press Enter on an auto-filled "please
+complete the purchase" message to make the money move. That reads as a double
+confirmation and hides that the click already meant "yes".
+
+Now `approve_quote` records the human approval (invariant 7, unchanged) **and runs
+the settlement itself** — funds the wallet, pays each shop over x402, captures the
+card — awaiting it so the widget's event poll shows every step live. The
+model-facing `purchase` is now a read-back: it reports the receipt and refuses
+without the approval record. The model triggers no spending at all, which
+strengthens invariants 2 and 7 rather than weakening them. This supersedes §15.1
+step 8's "Agent calls purchase" wording; §1, §2 (inv. 7), §3 and §15.4 were amended
+to match.
+
+**2. The test card is shown on file.** The card leg has always used a Stripe test
+card (`pm_card_visa`, Visa •••• 4242) and collects no card details, but nothing on
+screen said so — the "your card was charged" moment had no card behind it. The
+`CardAuthoriser` now exposes a `descriptor`, the server puts it in the snapshot
+(app tool and HTTP), and the widget shows it on the billing form, the approval card
+and the receipt. Honest (labelled "test mode"), and it makes the fiat half of the
+"fiat in, stablecoin out" story visible. Real card entry via Stripe Elements stays
+a mainnet concern (§13).
+
+| What changed | Why | Guarded by |
+|---|---|---|
+| `approve_quote` settles synchronously; `purchase` is a receipt read-back | Clicking Approve is the only confirmation the UX needs; the model never triggers spending | `tools.test.ts` "runs the whole loop" (approve settles, purchase reports; a second purchase re-reads without a second charge) |
+| Fault paths must be armed before approval, not before `purchase` | Settlement now runs on approve, so the pool-exhausted and unexpected-failure tests inject their fault before `approve_quote` | `tools.test.ts` "pool exhausted" and "unexpected failure after funding" |
+| `CardAuthoriser.descriptor` surfaced through the snapshot to the widget | The fiat leg was invisible; a hidden test card reads as fake on stage | type-checked end to end; shown on billing/approval/receipt |
+
+Watch-out for whoever tunes this next: a per-line refusal (e.g. `quoted_ne_demanded`)
+returns a normal `ok:false` result and lands in `done`, so approve returns success
+and the receipt shows the failed line; only a `PolicyError` (pool/treasury/funding)
+throws and drops back to `checkout` for a fresh approval. Don't collapse those two
+paths.
+
+## UX change (5 Sep): one pick per recommendation list
+
+`select` used to add every distinct product it was given, so a user could click
+Select on several rows of the **same** recommendation list and silently build a
+multi-line cart — including "Select anyway" on the flagged listing, which put the
+exact item the agent warned against into the order with no cart summary to show it.
+That was more permissive than §15.1, which describes selecting **one** item per
+browse and adding more via the next browse cycle.
+
+`select` now enforces one pick per list: choosing a different item from the current
+candidates replaces the previous pick and reuses its `line_id`; re-selecting the
+same item is a no-op. Multi-item orders still work — each new browse is a new list
+that contributes its own line — so §15.6's "several lines, one receipt" is intact.
+"Select anyway" still lets a human overrule a flag (invariant 5); it just replaces
+the current pick instead of adding a second line.
+
+| What changed | Why | Guarded by |
+|---|---|---|
+| `select` replaces a same-list pick (reuse line_id); re-select is a no-op | A single browse must not silently produce two lines, especially not the flagged one | `session.test.ts` "one pick per recommendation list" |
+| Multi-line carts now come from a second browse, not a second same-list select | Matches §15.1; keeps §15.6 intact | `session.test.ts` "a second browse adds a cart line…" |
+| `candidate.selected` projection upserts by `line_id` | A replaced pick must not duplicate in the dashboard's event-projected snapshot | `projection.test.ts` "projects abort and reopen-from-checkout correctly" (projected == in-memory) |
+
+Watch-out: "this list" is defined as "product_id ∈ current `candidates`". If the
+same product ever appears in two consecutive browse lists, selecting it in the
+second is treated as already-in-cart (no-op). Fine for the demo; revisit if real
+catalogs repeat ids across searches.
+
+Follow-on: once billing is submitted the decision-table Select buttons are disabled
+in the widget (a tooltip points to the approval card's Abort to change the pick).
+Changing a selection after billing would only reopen the session and drop the
+quote, so this is a UI guard, not a new server rule — `select` stays permissive so
+the dashboard/other hosts and the abort-and-restart path are unaffected. Caveat for
+a future multi-item run: the billing form currently appears after the first
+selection, so if billing is entered before the cart is complete, Select is locked
+early; the intended fix is to hold billing until the user says "nothing else"
+(§15.1 order), not to loosen this lock.

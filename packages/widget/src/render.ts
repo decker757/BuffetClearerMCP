@@ -73,6 +73,12 @@ function link(href: string, text: string): HTMLElement {
 function money(m: string | undefined): string {
   return m === undefined ? "–" : `${m} RLUSD`;
 }
+/** The card on file, e.g. "Visa •••• 4242 · test mode". No card is ever entered; this is always a test card. */
+function cardOnFile(s: Snapshot): string | undefined {
+  const c = s.card;
+  if (!c) return undefined;
+  return `${c.brand} •••• ${c.last4}${c.test ? " · test mode" : ""}`;
+}
 function short(hash: string): string {
   return `${hash.slice(0, 8)}…${hash.slice(-4)}`;
 }
@@ -85,11 +91,12 @@ function phaseStrip(s: Snapshot): HTMLElement {
   const idx = STEPS.findIndex((x) => x.key === s.step);
   const terminal = s.phase === "aborted" || s.phase === "expired";
   STEPS.forEach((st, i) => {
-    const span = el("span", undefined, st.label);
-    if (terminal) span.className = i <= idx ? "end" : "";
-    else if (s.phase === "done") span.className = "done";
-    else if (i < idx) span.className = "done";
-    else if (i === idx) span.className = "now";
+    if (i > 0) strip.append(el("span", "sep", "→"));
+    const span = el("span", "step", st.label);
+    if (terminal) {
+      if (i <= idx) span.classList.add("end");
+    } else if (s.phase === "done" || i < idx) span.classList.add("done");
+    else if (i === idx) span.classList.add("now");
     strip.append(span);
   });
   body.append(strip);
@@ -168,13 +175,20 @@ function candidateRow(c: Candidate, isSelected: boolean, st: UiState, a: Actions
   tr.append(name);
   tr.append(el("td", undefined, c.product.shop_id));
   tr.append(el("td", "num mono", c.product.price));
-  tr.append(el("td", "num", `${c.product.product_rating.toFixed(1)} / ${c.product.shop_rating.toFixed(1)}`));
+  const rating = el("td", "num");
+  rating.append(el("span", undefined, `${c.product.product_rating.toFixed(1)} / 5`));
+  rating.append(el("span", "muted", ` · shop ${c.product.shop_rating.toFixed(1)}`));
+  tr.append(rating);
   tr.append(el("td", "num", String(c.product.quantity_sold)));
   const act = el("td");
   if (isSelected) act.append(el("span", "chip server", "selected ✓"));
   else if (st.transport.canAct && (st.snapshot?.phase === "shopping" || st.snapshot?.phase === "checkout")) {
     const b = el("button", c.outcome === "rejected" ? "danger" : "primary", c.outcome === "rejected" ? "Select anyway" : "Select");
-    b.disabled = st.busy;
+    // Once billing is in, the choice is locked: changing it now would reopen the session and drop
+    // the quote. To pick something else, abort at the approval card and start again.
+    const locked = st.snapshot?.billing_present ?? false;
+    b.disabled = st.busy || locked;
+    if (locked) b.title = "Billing entered — selection is locked. Abort at the approval card to change it.";
     b.addEventListener("click", () => a.select(c.product.id));
     act.append(b);
   }
@@ -186,6 +200,8 @@ function billingForm(s: Snapshot, st: UiState, a: Actions): HTMLElement | undefi
   if (!st.transport.canAct) return undefined;
   if (s.selections.length === 0 || s.billing_present || !["shopping", "checkout"].includes(s.phase)) return undefined;
   const { root, body } = card("Billing", "never sent to the model");
+  const onFile = cardOnFile(s);
+  if (onFile) body.append(el("div", "note", `Payment: ${onFile} — a demo card; no card details are collected in this build.`));
   // Not a <form>: the host sandbox does not allow form submission, and a sandboxed submit never
   // even fires the submit event. A plain button reads the inputs directly; Enter does the same.
   const form = el("div", "form");
@@ -257,6 +273,8 @@ function approvalCard(s: Snapshot, st: UiState, a: Actions): HTMLElement | undef
   tb.append(sum("Items", q.items_total), sum("Service fee (flat)", q.fee), sum("Total charged to your card", q.total, true));
   table.append(tb);
   body.append(table);
+  const onFile = cardOnFile(s);
+  if (onFile) body.append(el("div", "note", `Charged to ${onFile}.`));
   body.append(el("div", "note", `The session wallet will hold exactly ${q.items_total} RLUSD; the agent cannot spend more. Quote expires ${new Date(q.expires_at).toLocaleTimeString()}.`));
   const actions = el("div", "actions");
   if (s.phase === "checkout" && st.transport.canAct) {
@@ -293,7 +311,15 @@ function receipt(s: Snapshot, events: SessionEvent[]): HTMLElement | undefined {
   };
   row("Items settled", money(captured?.items ?? s.ledger.settled));
   row("Service fee", money(captured?.fee ?? s.ledger.fee));
-  row("Charged to card", money(captured?.amount));
+  const onFile = cardOnFile(s);
+  if (onFile) {
+    const charged = el("div");
+    charged.append(el("span", undefined, money(captured?.amount)));
+    charged.append(el("span", "muted", `  ${onFile}`));
+    row("Charged to card", charged);
+  } else {
+    row("Charged to card", money(captured?.amount));
+  }
   if (released?.amount && Number(released.amount) > 0) row("Released on card", money(released.amount));
   for (const e of settled) {
     const p = e.payload as { order_id?: string; product_id?: string; explorer?: string; tx_hash?: string; invoice_sent_to?: string | null; amount?: string };

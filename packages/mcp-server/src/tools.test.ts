@@ -147,9 +147,11 @@ describe("tool surface", () => {
     expect(lines[0]).toMatchObject({ status: "settled" });
     expect(h.shop.paidRequests).toBe(1);
 
-    // second purchase with the same approval is refused: single use
+    // purchase is now a reporter: calling it again re-reads the same receipt and never charges a
+    // second time (the approval is single-use below the model, so no second payment is possible).
     const again = await h.call("purchase", { session_id: sid, quote_id, reason: "again" });
-    expect(again.isError).toBe(true);
+    expect(again.isError).toBe(false);
+    expect(again.data).toMatchObject({ ok: true, spent: price });
     expect(h.shop.paidRequests).toBe(1);
 
     // the chain verifies from what the widget/dashboard would fetch
@@ -222,7 +224,7 @@ describe("tool surface", () => {
     await h.call("select_candidate", { session_id: sid, product_id: "p_a06" });
     await h.call("submit_billing", { session_id: sid, ...BILLING });
     const quote_id = (await h.call("checkout", { session_id: sid, reason: "r" })).data.quote_id as string;
-    await h.call("approve_quote", { session_id: sid, quote_id });
+    // The fault must be armed before approval, because approving is what settles now.
     // The first read is the treasury precheck; funding succeeds; then the ledger blows up on the next read.
     const realBalance = h.ledger.rlusdBalance.bind(h.ledger);
     let calls = 0;
@@ -231,9 +233,9 @@ describe("tool surface", () => {
       if (calls === 2) throw new Error("ledger websocket dropped");
       return realBalance(a);
     };
-    const r = await h.call("purchase", { session_id: sid, quote_id, reason: "r" });
-    expect(r.isError).toBe(true);
-    expect(r.text).toMatch(/operator/);
+    const approve = await h.call("approve_quote", { session_id: sid, quote_id });
+    expect(approve.isError).toBe(true);
+    expect(approve.text).toMatch(/operator/);
     const snap = await h.call("session_snapshot", { session_id: sid });
     expect(snap.data.phase).toBe("settling");
     expect((await h.call("approve_quote", { session_id: sid, quote_id })).isError).toBe(true);
@@ -251,11 +253,10 @@ describe("tool surface", () => {
     await h.call("select_candidate", { session_id: sid, product_id: "p_a06" });
     await h.call("submit_billing", { session_id: sid, ...BILLING });
     const quote_id = (await h.call("checkout", { session_id: sid, reason: "r" })).data.quote_id as string;
-    await h.call("approve_quote", { session_id: sid, quote_id });
-    h.deps.pool.acquire("someone_else");
-    const r = await h.call("purchase", { session_id: sid, quote_id, reason: "r" });
-    expect(r.isError).toBe(true);
-    expect(r.text).toMatch(/pool_exhausted|no idle/);
+    h.deps.pool.acquire("someone_else"); // exhaust the pool before approving, which is what settles now
+    const approve = await h.call("approve_quote", { session_id: sid, quote_id });
+    expect(approve.isError).toBe(true);
+    expect(approve.text).toMatch(/pool_exhausted|no idle/);
     expect((await h.call("session_snapshot", { session_id: sid })).data.phase).toBe("checkout");
     h.deps.pool.transition(POOL.address, "idle");
     expect((await h.call("approve_quote", { session_id: sid, quote_id })).isError).toBe(false);
