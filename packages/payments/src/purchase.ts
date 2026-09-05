@@ -117,7 +117,7 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
     input.pool.transition(wallet.address, "idle");
     throw e;
   }
-  sink.emit({ type: "card.authorised", source: "server", span_id: span, payload: { auth_id, amount: quote.total, currency: "USD", mocked: true } });
+  sink.emit({ type: "card.authorised", source: "server", span_id: span, payload: { auth_id, amount: quote.total, currency: "USD", mocked: input.card.mocked } });
 
   // 2. Fund the session wallet with exactly what the pending lines need.
   let fund_tx: string | undefined;
@@ -247,7 +247,7 @@ export async function settlePurchase(input: SettleInput): Promise<SettleResult> 
       captured = add(chargeable, quote.fee);
       if (toCents(captured) > toCents(quote.total)) captured = quote.total;
       await input.card.capture({ auth_id, amount: captured });
-      sink.emit({ type: "card.captured", source: "server", span_id: span, payload: { auth_id, amount: captured, items: chargeable, fee: quote.fee, currency: "USD", mocked: true } });
+      sink.emit({ type: "card.captured", source: "server", span_id: span, payload: { auth_id, amount: captured, items: chargeable, fee: quote.fee, currency: "USD", mocked: input.card.mocked } });
       const leftover = sub(quote.total, captured);
       if (toCents(leftover) > 0n) {
         sink.emit({ type: "card.released", source: "server", span_id: span, payload: { auth_id, amount: leftover, reason: "lines_failed", via: "partial_capture" } });

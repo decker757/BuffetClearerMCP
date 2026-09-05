@@ -20,10 +20,11 @@
   },
   "dependencies": {
     "@aishop4u/shared": "*",
+    "express": "^5.1.0",
+    "stripe": "^22.6.1",
     "x402-xrpl": "^0.3.2",
     "xrpl": "^4.6.0",
-    "zod": "^3.25.0",
-    "express": "^5.1.0"
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0"

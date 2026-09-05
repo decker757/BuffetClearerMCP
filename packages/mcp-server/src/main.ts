@@ -1,4 +1,4 @@
-import { MockCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, type RegisteredShop } from "@aishop4u/payments";
+import { MockCardAuthoriser, StripeCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, type CardAuthoriser, type RegisteredShop } from "@aishop4u/payments";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import dotenv from "dotenv";
 import fs from "node:fs";
@@ -34,13 +34,19 @@ const rlusd = {
 const shopsUrl = process.env.SHOPS_URL ?? `http://localhost:${process.env.SHOPS_PORT ?? "4002"}`;
 let registry: Record<string, RegisteredShop> | undefined;
 
+// Real card charge when a Stripe test key is present; otherwise the mock (§15.4, §5 step 11).
+const card: CardAuthoriser = process.env.STRIPE_SECRET_KEY
+  ? new StripeCardAuthoriser(process.env.STRIPE_SECRET_KEY)
+  : new MockCardAuthoriser();
+process.stderr.write(`aishop4u mcp-server: card leg = ${card.mocked ? "mock" : "Stripe test-mode"}\n`);
+
 const deps: Deps = {
   manager: new SessionManager(new EventLog(path.join(ROOT, ".sessions")), process.env.SERVICE_FEE ?? "0.25"),
   shopsUrl,
   fetchImpl: fetch,
   ledger: new XrplLedger(process.env.XRPL_WS_URL ?? "wss://s.altnet.rippletest.net:51233", rlusd),
   pool: WalletPool.fromFile(path.join(ROOT, ".wallets/pool.json")),
-  card: new MockCardAuthoriser(),
+  card,
   treasury: treasury(),
   rlusd,
   network: (process.env.XRPL_NETWORK ?? "xrpl:1") as Deps["network"],

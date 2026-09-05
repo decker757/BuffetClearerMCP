@@ -9,7 +9,7 @@
  * (npm run provision -- pool 2), treasury with RLUSD (npm run fund:treasury).
  */
 import { chainHash, type Quote } from "@aishop4u/shared";
-import { MockCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, settlePurchase, type EventSink } from "@aishop4u/payments";
+import { MockCardAuthoriser, StripeCardAuthoriser, WalletPool, XrplLedger, loadShopRegistry, settlePurchase, type CardAuthoriser, type EventSink } from "@aishop4u/payments";
 import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
@@ -30,7 +30,7 @@ const productId = process.argv[2] ?? "p_a08";
 const quoteId = process.argv[3] ?? `q_${Date.now().toString(36)}`;
 
 function treasury(): { seed: string; address: string } {
-  const seed = process.env.TREASURY_SEED ?? (JSON.parse(fs.readFileSync(path.join(ROOT, ".wallets/spike.json"), "utf8")) as { treasury: string }).treasury;
+  const seed = process.env.TREASURY_SEED || (JSON.parse(fs.readFileSync(path.join(ROOT, ".wallets/spike.json"), "utf8")) as { treasury: string }).treasury;
   return { seed, address: Wallet.fromSeed(seed).address };
 }
 
@@ -71,7 +71,7 @@ async function main(): Promise<void> {
       treasury: treasury(),
       pool,
       ledger,
-      card: new MockCardAuthoriser(),
+      card: (process.env.STRIPE_SECRET_KEY ? new StripeCardAuthoriser(process.env.STRIPE_SECRET_KEY) : new MockCardAuthoriser()) as CardAuthoriser,
       rlusd: RLUSD,
       network: "xrpl:1",
       sink,
