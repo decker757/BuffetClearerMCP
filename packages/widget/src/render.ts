@@ -76,6 +76,8 @@ function money(m: string | undefined): string {
 /** The card leg is fiat (CLAUDE.md §3, two rails): never label it RLUSD. */
 function usd(m: string | undefined): string {
   return m === undefined ? "–" : `${m} USD`;
+}
+
 /** The card on file, e.g. "Visa •••• 4242 · test mode". No card is ever entered; this is always a test card. */
 function cardOnFile(s: Snapshot): string | undefined {
   const c = s.card;
@@ -315,18 +317,17 @@ function receipt(s: Snapshot, events: SessionEvent[]): HTMLElement | undefined {
   };
   row("Items settled", money(captured?.items ?? s.ledger.settled));
   row("Service fee", money(captured?.fee ?? s.ledger.fee));
-  row("Charged to card", usd(captured?.amount));
-  if (released?.amount && Number(released.amount) > 0) row("Released on card", usd(released.amount));
+  // The card leg is fiat: usd(), never money() (§3, two rails).
   const onFile = cardOnFile(s);
   if (onFile) {
     const charged = el("div");
-    charged.append(el("span", undefined, money(captured?.amount)));
+    charged.append(el("span", undefined, usd(captured?.amount)));
     charged.append(el("span", "muted", `  ${onFile}`));
     row("Charged to card", charged);
   } else {
-    row("Charged to card", money(captured?.amount));
+    row("Charged to card", usd(captured?.amount));
   }
-  if (released?.amount && Number(released.amount) > 0) row("Released on card", money(released.amount));
+  if (released?.amount && Number(released.amount) > 0) row("Released on card", usd(released.amount));
   for (const e of settled) {
     const p = e.payload as { order_id?: string; product_id?: string; explorer?: string; tx_hash?: string; invoice_sent_to?: string | null; amount?: string };
     const d = el("div");

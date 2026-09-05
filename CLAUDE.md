@@ -175,10 +175,11 @@ makes the demo smoother.
    approved item total. The agent cannot pay more because there is nothing there
    to spend. Never top up mid-session. Spendable is tracked in RLUSD, separately
    from the XRP reserve and fee float the wallet also carries.
-2. **Signing authority sits below the model.** The model's only spending primitive
-   is `purchase(quote_id)`, and it only settles the lines in an approved quote.
-   The server decides whether to sign. There is no generic "send N to address X"
-   tool exposed to the model, ever.
+2. **Signing authority sits below the model.** The model has **no spending
+   primitive at all**: settlement runs from the widget's `approve_quote`, and the
+   model-facing `purchase(quote_id)` only reads the receipt back. The server
+   decides whether to sign. There is no generic "send N to address X" tool
+   exposed to the model, ever.
 3. **The return address is fixed at wallet creation** and stored server-side. It
    is the treasury address, set in config. It is never derived from anything that
    passed through the agent, a seller response, or the widget.
