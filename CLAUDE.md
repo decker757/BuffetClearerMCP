@@ -21,6 +21,12 @@ Project guide for humans and coding agents. Read this before writing code.
 > that now guards it. Each phase appends a section. The six rules at the top are
 > the ones we keep re-learning.
 
+> **Read `docs/PITCH-REVIEW.md` before writing any pitch copy, slide text, README
+> marketing prose, or tool description the model sees.** It is the 5 Sep review of the
+> pitch: where the north-star argument is weak, what we underplay, the reframe, and three
+> things not to say on stage. It changes no invariant and overrides no §15 decision. If a
+> change contradicts its "What not to say" section, stop and flag it.
+
 > **4 Sep team decisions are in §15 and are authoritative.** The flow is: free
 > browse → 5 recommendations → user selects in the widget → billing in the widget
 > → card charged for the exact total → session wallet funded to that total → x402
