@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src", "scenarios", "fixtures"],
+  "references": [{ "path": "../shared" }, { "path": "../payments" }, { "path": "../shops" }, { "path": "../mcp-server" }]
+}
