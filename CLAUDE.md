@@ -2,9 +2,8 @@
 
 Project guide for humans and coding agents. Read this before writing code.
 
-> **TODO before first commit:** pick a product name. Confirm the demo vertical
-> (proposed: laptop; contrast run: USB-C cable). Replace `PRODUCT_NAME` and
-> `VERTICAL` throughout.
+> **Product: AIShop4U.** Demo vertical confirmed: a laptop for the main run, a
+> USB-C cable for the contrast run.
 
 > **Do in the first 15 minutes:** install the builder feedback hook (§14). It is
 > 10% of the score, it is project-scoped, and every one of us does it.
@@ -115,8 +114,8 @@ This is the commercial loop. Judges will ask for it by name.
 
 | Who | Pays | To | For | Rail |
 |---|---|---|---|---|
-| Customer | item total + flat service fee | PRODUCT_NAME | a supervised purchase, at an approved total | card (fiat) |
-| PRODUCT_NAME, as the customer's agent | item price | each shop | the item(s) | RLUSD on XRPL (x402) |
+| Customer | item total + flat service fee | AIShop4U | a supervised purchase, at an approved total | card (fiat) |
+| AIShop4U, as the customer's agent | item price | each shop | the item(s) | RLUSD on XRPL (x402) |
 
 - **Flat fee, not a take rate.** The team message proposed 1.5%. Decision: flat
   (§11). A percentage is a take rate and reads as one to a judge; "tax" is the
@@ -206,7 +205,7 @@ makes the demo smoother.
 ## 3. Architecture
 
 ```
-User's card ──authorise / capture (Stripe; mocked by default)──▶ PRODUCT_NAME   [fiat leg]
+User's card ──authorise / capture (Stripe; mocked by default)──▶ AIShop4U   [fiat leg]
                                                                     │
 Claude (chat) ── MCP ──▶ MCP server                                 │ "card ok → fund session"
                           │                                         ▼
@@ -546,7 +545,7 @@ in the opening line**: "Use AIShop4U: I want to buy a laptop." Tool descriptions
 now say "use this first whenever the user wants to buy anything", but naming
 it is the guarantee. Click "Always allow" on each AIShop4U tool the first time.
 
-1. **The main run.** High-stakes purchase in VERTICAL. Say what you want. Agent
+1. **The main run.** High-stakes purchase in the laptop category. Say what you want. Agent
    asks for a budget; give a range. Show the 5 recommendations and the planted
    listing struck through with the agent's reason and the numbers. Select one in
    the widget. Enter billing in the widget, not in chat, and say why. Approval
