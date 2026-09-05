@@ -6,7 +6,7 @@ Every network shipped an agent-payment spec this year. Almost none of them answe
 
 Built for the Ripple challenge at Singhacks 2026: an AI-native business on XRPL with x402 agentic payments. Claude is the agent. AIShop4U is the MCP server and the inline widget between the agent and the money.
 
-> Product name: AIShop4U Team: BuffetClearers.
+> Product name: AIShop4U Team: BuffetClearers
 
 ---
 
